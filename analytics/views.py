@@ -1,6 +1,7 @@
 import json
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Avg, Min, Max, Q
+from django.core.paginator import Paginator
+from django.db.models import Count, Avg, Min, Max
 from django.db.models.functions import TruncMonth
 from django.shortcuts import render
 
@@ -14,6 +15,19 @@ from health_records.models import (
 from certificates.models import MedicalCertificate
 
 
+def _qs_params(request, extra=None):
+    """Preserve current filters in pagination links."""
+    params = request.GET.copy()
+    params.pop('page', None)
+    if extra:
+        for k, v in extra.items():
+            if v is None or v == '':
+                params.pop(k, None)
+            else:
+                params[k] = v
+    return params.urlencode()
+
+
 @login_required
 def index(request):
     analysis = request.GET.get('analysis', 'dashboard')
@@ -25,17 +39,27 @@ def index(request):
     user = request.user
     doctor = get_doctor_profile(user) if is_doctor(user) and not is_admin(user) else None
     own_patient = get_linked_patient(user)
+    is_patient_scope = bool(own_patient) and not is_doctor(user) and not is_admin(user)
+    is_doctor_scope = bool(doctor)
 
-    context = {
-        'analysis': analysis,
-        'date_from': date_from,
-        'date_to': date_to,
-        'patient_id': patient_id,
-        'category': category,
-        'categories': Patient.CATEGORY_CHOICES,
-        'is_doctor_scope': bool(doctor),
-        'is_patient_scope': bool(own_patient) and not is_doctor(user),
-        'analysis_choices': [
+    # Patient workspace: lock to own category only (never show all categories)
+    if is_patient_scope:
+        category = own_patient.category
+        patient_id = own_patient.patient_id
+        # Patients only need a focused set of analysis types
+        analysis_choices = [
+            ('dashboard', 'My Health Overview'),
+            ('patient_trend', 'My Health Trend'),
+            ('cbc', 'CBC Analysis'),
+            ('rbs', 'RBS Analysis'),
+            ('bp', 'Blood Pressure Analysis'),
+            ('lipid', 'Lipid Profile Analysis'),
+            ('monthly', 'Monthly Analysis'),
+        ]
+        if analysis not in dict(analysis_choices):
+            analysis = 'dashboard'
+    else:
+        analysis_choices = [
             ('dashboard', 'Analytics Dashboard'),
             ('patient_trend', 'Patient Health Trend'),
             ('cbc', 'CBC Analysis'),
@@ -47,7 +71,20 @@ def index(request):
             ('doctor_appt', 'Doctor Appointments'),
             ('doctor_checkup', 'Doctor Patient Check-ups'),
             ('category', 'Category Analysis'),
-        ],
+        ]
+
+    context = {
+        'analysis': analysis,
+        'date_from': date_from,
+        'date_to': date_to,
+        'patient_id': patient_id,
+        'category': category,
+        'categories': Patient.CATEGORY_CHOICES,
+        'is_doctor_scope': is_doctor_scope,
+        'is_patient_scope': is_patient_scope,
+        'analysis_choices': analysis_choices,
+        'category_locked': is_patient_scope,
+        'querystring': _qs_params(request),
     }
 
     appt_qs = Appointment.objects.all()
@@ -57,13 +94,16 @@ def index(request):
     if doctor:
         appt_qs = appt_qs.filter(doctor=doctor)
         hc_qs = hc_qs.filter(doctor=doctor)
-        patient_ids = appt_qs.values_list('patient_id', flat=True).distinct()
+        patient_ids = set(appt_qs.values_list('patient_id', flat=True)) | set(
+            hc_qs.values_list('patient_id', flat=True)
+        )
         patient_qs = patient_qs.filter(pk__in=patient_ids)
-    elif own_patient:
+    elif is_patient_scope:
         appt_qs = appt_qs.filter(patient=own_patient)
         hc_qs = hc_qs.filter(patient=own_patient)
         patient_qs = patient_qs.filter(pk=own_patient.pk)
 
+    # Category filter applies to all roles (for patients it is forced above)
     if category:
         patient_qs = patient_qs.filter(category=category)
         appt_qs = appt_qs.filter(patient__category=category)
@@ -87,50 +127,106 @@ def index(request):
         'certificates': MedicalCertificate.objects.filter(patient__in=patient_qs).count(),
     }
 
-    monthly = (
-        hc_qs.annotate(month=TruncMonth('checkup_date'))
-        .values('month').annotate(c=Count('id')).order_by('month')
+    # ---- Charts / tables driven by filters (analysis type + category + dates) ----
+    show_monthly = analysis in ('dashboard', 'monthly', 'doctor_checkup')
+    show_categories = analysis in ('dashboard', 'category') and not is_patient_scope
+    show_department = analysis in ('dashboard', 'department') and not is_patient_scope
+    show_appt_status = analysis in ('dashboard', 'doctor_appt')
+    show_recent_checkups = analysis in ('dashboard', 'doctor_checkup') or is_doctor_scope
+    show_kpi = analysis in (
+        'dashboard', 'monthly', 'category', 'department',
+        'doctor_appt', 'doctor_checkup',
     )
-    context['monthly_labels'] = json.dumps([m['month'].strftime('%b %Y') if m['month'] else '' for m in monthly])
-    context['monthly_values'] = json.dumps([m['c'] for m in monthly])
 
-    cats = patient_qs.values('category').annotate(c=Count('id'))
-    context['cat_labels'] = json.dumps([
-        dict(Patient.CATEGORY_CHOICES).get(c['category'], c['category']) for c in cats
-    ])
-    context['cat_values'] = json.dumps([c['c'] for c in cats])
-    context['cat_table'] = [
-        {'label': dict(Patient.CATEGORY_CHOICES).get(c['category'], c['category']), 'count': c['c']}
-        for c in cats
-    ]
+    context['show_monthly'] = show_monthly
+    context['show_categories'] = show_categories
+    context['show_department'] = show_department
+    context['show_appt_status'] = show_appt_status
+    context['show_recent_checkups'] = show_recent_checkups
+    context['show_kpi'] = show_kpi
 
-    dept_data = (
-        hc_qs.filter(patient__student_profile__department__isnull=False)
-        .values('patient__student_profile__department__name')
-        .annotate(c=Count('id')).order_by('-c')[:10]
-    )
-    context['dept_labels'] = json.dumps([d['patient__student_profile__department__name'] or '—' for d in dept_data])
-    context['dept_values'] = json.dumps([d['c'] for d in dept_data])
-    context['dept_table'] = dept_data
+    # Defaults so template JS never breaks
+    context['monthly_labels'] = '[]'
+    context['monthly_values'] = '[]'
+    context['cat_labels'] = '[]'
+    context['cat_values'] = '[]'
+    context['cat_table'] = []
+    context['dept_labels'] = '[]'
+    context['dept_values'] = '[]'
+    context['dept_table'] = []
+    context['appt_status_labels'] = '[]'
+    context['appt_status_values'] = '[]'
+    context['appt_by_status'] = []
+    context['recent_checkups'] = []
+    context['page_obj'] = None
 
-    by_status = appt_qs.values('status').annotate(c=Count('id')).order_by('status')
-    context['appt_status_labels'] = json.dumps([b['status'] for b in by_status])
-    context['appt_status_values'] = json.dumps([b['c'] for b in by_status])
-    context['appt_by_status'] = list(by_status)
+    if show_monthly:
+        monthly = (
+            hc_qs.annotate(month=TruncMonth('checkup_date'))
+            .values('month').annotate(c=Count('id')).order_by('month')
+        )
+        context['monthly_labels'] = json.dumps([
+            m['month'].strftime('%b %Y') if m['month'] else '' for m in monthly
+        ])
+        context['monthly_values'] = json.dumps([m['c'] for m in monthly])
 
-    if analysis in ('doctor_checkup', 'dashboard') or doctor:
-        context['recent_checkups'] = hc_qs.select_related('patient').order_by('-checkup_date')[:20]
+    if show_categories:
+        cats = patient_qs.values('category').annotate(c=Count('id'))
+        context['cat_labels'] = json.dumps([
+            dict(Patient.CATEGORY_CHOICES).get(c['category'], c['category']) for c in cats
+        ])
+        context['cat_values'] = json.dumps([c['c'] for c in cats])
+        context['cat_table'] = [
+            {
+                'label': dict(Patient.CATEGORY_CHOICES).get(c['category'], c['category']),
+                'count': c['c'],
+            }
+            for c in cats
+        ]
 
-    if analysis == 'patient_trend' and patient_id:
-        patient = Patient.objects.filter(patient_id=patient_id).first()
-        if own_patient and patient and patient.pk != own_patient.pk:
-            patient = None
-        if doctor and patient:
-            if not Appointment.objects.filter(doctor=doctor, patient=patient).exists() and not \
-                    HealthCheckup.objects.filter(doctor=doctor, patient=patient).exists():
-                # still allow view if admin-like; for pure doctor scope keep soft
+    if show_department:
+        dept_data = list(
+            hc_qs.filter(patient__student_profile__department__isnull=False)
+            .values('patient__student_profile__department__name')
+            .annotate(c=Count('id')).order_by('-c')[:10]
+        )
+        context['dept_labels'] = json.dumps([
+            d['patient__student_profile__department__name'] or '—' for d in dept_data
+        ])
+        context['dept_values'] = json.dumps([d['c'] for d in dept_data])
+        context['dept_table'] = dept_data
+
+    if show_appt_status:
+        by_status = list(appt_qs.values('status').annotate(c=Count('id')).order_by('status'))
+        context['appt_status_labels'] = json.dumps([b['status'] for b in by_status])
+        context['appt_status_values'] = json.dumps([b['c'] for b in by_status])
+        context['appt_by_status'] = by_status
+
+    if show_recent_checkups:
+        recent_qs = hc_qs.select_related('patient').order_by('-checkup_date')
+        paginator = Paginator(recent_qs, 10)
+        page_obj = paginator.get_page(request.GET.get('page'))
+        context['page_obj'] = page_obj
+        context['recent_checkups'] = page_obj
+
+    # Patient health trend
+    if analysis == 'patient_trend':
+        patient = None
+        if is_patient_scope:
+            patient = own_patient
+        elif patient_id:
+            patient = Patient.objects.filter(patient_id=patient_id).first()
+            if doctor and patient:
+                # Soft scope: prefer patients linked via appts/checkups; still allow if found
                 pass
         context['trend_patient'] = patient
+        context['hb_labels'] = '[]'
+        context['hb_values'] = '[]'
+        context['rbs_labels'] = '[]'
+        context['rbs_values'] = '[]'
+        context['bp_labels'] = '[]'
+        context['bp_sys'] = '[]'
+        context['bp_dia'] = '[]'
         if patient:
             hb = ClinicalParameterValue.objects.filter(
                 health_checkup__patient=patient, parameter__code='HB'
@@ -142,8 +238,12 @@ def index(request):
             context['hb_values'] = json.dumps([float(v.value) for v in hb])
             context['rbs_labels'] = json.dumps([str(v.health_checkup.checkup_date) for v in rbs])
             context['rbs_values'] = json.dumps([float(v.value) for v in rbs])
-            bp = BloodPressureReport.objects.filter(health_checkup__patient=patient).order_by('measured_at')
-            context['bp_labels'] = json.dumps([str(b.measured_at.date()) if b.measured_at else '' for b in bp])
+            bp = BloodPressureReport.objects.filter(
+                health_checkup__patient=patient
+            ).order_by('measured_at')
+            context['bp_labels'] = json.dumps([
+                str(b.measured_at.date()) if b.measured_at else '' for b in bp
+            ])
             context['bp_sys'] = json.dumps([b.systolic for b in bp])
             context['bp_dia'] = json.dumps([b.diastolic for b in bp])
 

@@ -98,3 +98,20 @@ def dashboard(request):
             'certificates': MedicalCertificate.objects.filter(patient=patient).order_by('-created_at')[:5],
         })
     return render(request, 'accounts/dashboard_patient.html', context)
+
+def register_view(request):
+    """Patient self-registration (student / staff) from the login screen."""
+    if request.user.is_authenticated:
+        return redirect('accounts:dashboard')
+    from accounts.forms import PatientRegistrationForm
+    form = PatientRegistrationForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        user, patient = form.save()
+        log_action(user, 'register', 'accounts', patient.pk, f'Self-registered {patient}', request=request)
+        messages.success(
+            request,
+            f'Registration successful. Your patient ID is {patient.patient_id}. You can sign in now.',
+        )
+        return redirect('accounts:login')
+    return render(request, 'accounts/register.html', {'form': form})
+
