@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Find Doctor{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Find Doctor</h2>
+  <form class="card card-gv mb-4" method="get"><div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Medical System</label>
+        <select name="medical_system" class="form-select">
+          <option value="">All</option>
+          {% for s in systems %}
+          <option value="{{ s.pk }}" {% if ms == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Specialization</label>
+        <select name="specialization" class="form-select">
+          <option value="">All</option>
+          {% for s in specs %}
+          <option value="{{ s.pk }}" {% if spec == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Date</label>
+        <input type="date" name="date" value="{{ date_str }}" class="form-control" required>
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-gv w-100" name="search" value="1">Search Available Doctors</button>
+      </div>
+    </div>
+  </div></form>
+
+  {% if doctors %}
+  <div class="row g-3">
+    {% for d in doctors %}
+    <div class="col-md-6">
+      <div class="card card-gv h-100">
+        <div class="card-body">
+          <h5 class="card-title">Dr. {{ d.name }}</h5>
+          <p class="mb-1 text-muted">
+            {{ d.medical_system.name|default:"—" }} · {{ d.specialization.name|default:"General" }}
+          </p>
+          <p class="small mb-2">{{ d.qualification }}</p>
+          {% if on_date %}
+          <p class="small mb-2"><strong>{{ on_date }}</strong> · {{ d.open_slot_count }} open slot(s)</p>
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            {% for s in d.available_slots %}
+              {% if s.available %}
+              <a href="{% url 'appointments:book' %}?doctor={{ d.pk }}&date={{ on_date|date:'Y-m-d' }}&time={{ s.label }}"
+                 class="btn btn-sm btn-outline-gv">{{ s.label }}</a>
+              {% elif s.booked %}
+              <span class="btn btn-sm btn-secondary disabled">{{ s.label }}</span>
+              {% endif %}
+            {% empty %}
+            <span class="text-muted small">No slots this day</span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <a href="{% url 'appointments:book' %}?doctor={{ d.pk }}" class="btn btn-sm btn-gv">Book</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif request.GET.search %}
+  <p class="text-muted">No available doctors match your criteria.</p>
+  {% endif %}
+</div>
+{% endblock %}

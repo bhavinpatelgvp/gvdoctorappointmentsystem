@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ appointment.appointment_number }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px">
+  <h2 class="page-title">{{ appointment.appointment_number }}</h2>
+  <div class="card card-gv mb-3"><div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-4">Patient</dt>
+      <dd class="col-sm-8">
+        {% if user.is_doctor_user or user.is_admin_user or user.is_superuser %}
+        <a href="{% url 'patients:detail' appointment.patient.patient_id %}">{{ appointment.patient.name }}</a>
+        {% else %}
+        {{ appointment.patient.name }}
+        {% endif %}
+      </dd>
+      <dt class="col-sm-4">Doctor</dt><dd class="col-sm-8">Dr. {{ appointment.doctor.name }}</dd>
+      <dt class="col-sm-4">Date / Time</dt><dd class="col-sm-8">{{ appointment.appointment_date }} at {{ appointment.appointment_time }}</dd>
+      <dt class="col-sm-4">Status</dt><dd class="col-sm-8"><span class="badge badge-status-{{ appointment.status }}">{{ appointment.get_status_display }}</span></dd>
+      <dt class="col-sm-4">Reason</dt><dd class="col-sm-8">{{ appointment.reason|default:"—" }}</dd>
+    </dl>
+  </div></div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if user.is_doctor_user or user.is_admin_user or user.is_superuser %}
+      {% if appointment.status == 'requested' %}
+      <form method="post" action="{% url 'appointments:confirm' appointment.pk %}">{% csrf_token %}<button class="btn btn-gv">Confirm</button></form>
+      {% endif %}
+      {% if appointment.status != 'completed' and appointment.status != 'cancelled' %}
+      <a href="{% url 'appointments:start_consultation' appointment.pk %}" class="btn btn-gv">Start Consultation</a>
+      {% endif %}
+    {% endif %}
+    {% if appointment.status != 'completed' and appointment.status != 'cancelled' %}
+    <a href="{% url 'appointments:reschedule' appointment.pk %}" class="btn btn-outline-gv">Reschedule</a>
+    <a href="{% url 'appointments:cancel' appointment.pk %}" class="btn btn-outline-danger">Cancel</a>
+    {% endif %}
+    <a href="{% url 'appointments:index' %}" class="btn btn-outline-secondary">Back</a>
+  </div>
+</div>
+{% endblock %}

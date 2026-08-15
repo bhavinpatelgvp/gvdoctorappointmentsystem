@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px">
+  <h2 class="page-title">{{ title }}</h2>
+  <div class="card card-gv"><div class="card-body">
+    <form method="post">{% csrf_token %}
+      <div class="row">
+        {% for field in form %}
+        <div class="col-md-6 mb-3"><label class="form-label">{{ field.label }}</label>{{ field }}{% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}</div>
+        {% endfor %}
+      </div>
+      <button type="submit" class="btn btn-gv">Save</button>
+      <a href="{% url 'masters:staff_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

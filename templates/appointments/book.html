@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Book Appointment{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px">
+  <h2 class="page-title">Book Appointment</h2>
+  {% if patient %}
+  <p class="text-muted">Patient: <strong>{{ patient.name }}</strong> ({{ patient.patient_id }})</p>
+  {% else %}
+  <div class="alert alert-warning">Link a patient profile or open booking from Find Doctor while logged in as a patient.</div>
+  {% endif %}
+  {% if doctor %}
+  <div class="card card-gv mb-3"><div class="card-body">
+    <strong>Dr. {{ doctor.name }}</strong>
+    – {{ doctor.medical_system.name|default:"" }} {{ doctor.specialization.name|default:"" }}
+  </div></div>
+  {% endif %}
+  {% if slots %}
+  <div class="card card-gv mb-3"><div class="card-header">Available slots {% if on_date %}on {{ on_date }}{% endif %}</div>
+    <div class="card-body d-flex flex-wrap gap-1">
+      {% for s in slots %}
+        {% if s.available %}
+        <a class="btn btn-sm btn-outline-gv" href="?doctor={{ doctor.pk }}&date={{ on_date|date:'Y-m-d' }}&time={{ s.label }}">{{ s.label }}</a>
+        {% elif s.booked %}
+        <span class="btn btn-sm btn-secondary disabled">{{ s.label }} booked</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="card card-gv"><div class="card-body">
+    <form method="post">{% csrf_token %}
+      {% if not patient %}<div class="mb-3"><label class="form-label">Patient ID</label><input name="patient_id" class="form-control" required></div>{% endif %}
+      {% for field in form %}
+      <div class="mb-3"><label class="form-label">{{ field.label }}</label>{{ field }}{% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}</div>
+      {% endfor %}
+      <button type="submit" class="btn btn-gv">Confirm Booking</button>
+      <a href="{% url 'appointments:find_doctor' %}" class="btn btn-outline-secondary">Find Doctor</a>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

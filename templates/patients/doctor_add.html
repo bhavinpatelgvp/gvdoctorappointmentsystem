@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Register Patient{% endblock %}
+{% block content %}
+<div class="container" style="max-width:800px">
+  <h2 class="page-title">Register Patient (Clinic)</h2>
+  <div class="card card-gv mb-3"><div class="card-body">
+    <form method="get" class="row g-2">
+      <div class="col-md-9"><input type="text" name="q" value="{{ pre_q }}" class="form-control" placeholder="Search existing patient before creating…"></div>
+      <div class="col-md-3"><button class="btn btn-outline-gv w-100">Search Existing</button></div>
+    </form>
+    {% if existing %}
+    <div class="table-responsive mt-3">
+      <table class="table table-sm table-gv">
+        <thead><tr><th>ID</th><th>Name</th><th>Category</th><th>Mobile</th><th></th></tr></thead>
+        <tbody>
+        {% for p in existing %}
+        <tr>
+          <td>{{ p.patient_id }}</td><td>{{ p.name }}</td><td>{{ p.get_category_display }}</td><td>{{ p.mobile }}</td>
+          <td><a href="{% url 'patients:detail' p.patient_id %}" class="btn btn-sm btn-gv">Use</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="small text-muted mb-0">If the patient already exists, open their record instead of creating a duplicate.</p>
+    </div>
+    {% endif %}
+  </div></div>
+  <div class="card card-gv"><div class="card-body">
+    <form method="post">{% csrf_token %}
+      <div class="row">
+        {% for field in form %}
+        <div class="col-md-6 mb-3"><label class="form-label">{{ field.label }}</label>{{ field }}{% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}</div>
+        {% endfor %}
+      </div>
+      <button type="submit" class="btn btn-gv">Register Patient</button>
+      <a href="{% url 'patients:index' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

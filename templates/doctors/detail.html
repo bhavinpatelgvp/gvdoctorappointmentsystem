@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Dr. {{ doctor.name }}{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Dr. {{ doctor.name }}</h2>
+  <div class="card card-gv mb-3">
+    <div class="card-body">
+      <p><strong>Specialization:</strong> {{ doctor.specialization.name|default:"—" }}</p>
+      <p><strong>Qualification:</strong> {{ doctor.qualification }}</p>
+      <p><strong>Experience:</strong> {{ doctor.experience_years }} years</p>
+      <p><strong>Availability:</strong> {{ doctor.availability }}</p>
+      <p><strong>Registration:</strong> {{ doctor.registration_number }}</p>
+    </div>
+  </div>
+  <div class="card card-gv">
+    <div class="card-header">Weekly Schedule</div>
+    <ul class="list-group list-group-flush">
+      {% for s in schedules %}
+      <li class="list-group-item">{{ s.get_day_of_week_display }}: {{ s.start_time }} – {{ s.end_time }} ({{ s.slot_duration_minutes }} min slots)</li>
+      {% empty %}
+      <li class="list-group-item text-muted">No schedule configured</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

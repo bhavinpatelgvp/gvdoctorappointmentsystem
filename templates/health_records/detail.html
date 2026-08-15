@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Check-up {{ checkup.checkup_date }}{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Check-up {{ checkup.checkup_date }} – {{ checkup.patient.name }}</h2>
+  <p class="text-muted">Doctor: {{ checkup.doctor.name|default:"—" }} · {{ checkup.notes }}</p>
+  {% if cbc %}
+  <div class="card card-gv mb-3"><div class="card-header">CBC</div><div class="card-body">
+    Hb {{ cbc.hemoglobin }} · RBC {{ cbc.rbc_count }} · WBC {{ cbc.wbc_count }} · Plt {{ cbc.platelet_count }}
+    · N {{ cbc.neutrophils }} L {{ cbc.lymphocytes }}
+  </div></div>
+  {% endif %}
+  {% if rbs %}
+  <div class="card card-gv mb-3"><div class="card-header">RBS</div><div class="card-body">{{ rbs.value }} {{ rbs.unit }}</div></div>
+  {% endif %}
+  {% if bp_list %}
+  <div class="card card-gv mb-3"><div class="card-header">Blood Pressure</div>
+    <ul class="list-group list-group-flush">{% for b in bp_list %}<li class="list-group-item">{{ b.systolic }}/{{ b.diastolic }} · Pulse {{ b.pulse_rate|default:"—" }} · {{ b.measured_at }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if lipid %}
+  <div class="card card-gv mb-3"><div class="card-header">Lipid</div><div class="card-body">
+    TC {{ lipid.total_cholesterol }} · HDL {{ lipid.hdl }} · LDL {{ lipid.ldl }} · TG {{ lipid.triglycerides }}
+  </div></div>
+  {% endif %}
+  {% if params %}
+  <div class="card card-gv mb-3"><div class="card-header">Parameters</div>
+    <table class="table table-sm mb-0"><thead><tr><th>Parameter</th><th>Value</th><th>Unit</th><th>Status</th></tr></thead>
+    <tbody>{% for p in params %}<tr><td>{{ p.parameter.name }}</td><td>{{ p.value }}</td><td>{{ p.unit }}</td><td>{{ p.get_status_display }}</td></tr>{% endfor %}</tbody></table>
+  </div>
+  {% endif %}
+  <a href="{% url 'patients:history' checkup.patient.patient_id %}" class="btn btn-outline-gv">Patient History</a>
+</div>
+{% endblock %}

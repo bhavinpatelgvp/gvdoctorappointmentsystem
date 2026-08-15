@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Edit Patient{% endblock %}
+{% block content %}
+<div class="container" style="max-width:640px">
+  <h2 class="page-title">Edit Patient – {{ patient.name }}</h2>
+  <form method="post" class="card card-gv"><div class="card-body">{% csrf_token %}
+    <div class="mb-3"><label class="form-label">Name</label><input name="name" class="form-control" value="{{ patient.name }}" required></div>
+    <div class="mb-3"><label class="form-label">Mobile</label><input name="mobile" class="form-control" value="{{ patient.mobile }}"></div>
+    <div class="mb-3"><label class="form-label">Email</label><input name="email" type="email" class="form-control" value="{{ patient.email }}"></div>
+    <div class="mb-3"><label class="form-label">Address</label><textarea name="address" class="form-control" rows="2">{{ patient.address }}</textarea></div>
+    <div class="mb-3"><label class="form-label">Blood group</label><input name="blood_group" class="form-control" value="{{ patient.blood_group }}"></div>
+    <div class="mb-3"><label class="form-label">Emergency contact</label><input name="emergency_contact" class="form-control" value="{{ patient.emergency_contact }}"></div>
+    <button class="btn btn-gv">Save</button>
+    <a href="{% url 'patients:detail' patient.patient_id %}" class="btn btn-outline-secondary">Cancel</a>
+  </div></form>
+</div>
+{% endblock %}

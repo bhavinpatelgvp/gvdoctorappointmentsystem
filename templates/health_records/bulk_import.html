@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Bulk Health Import{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px">
+  <h2 class="page-title">Bulk Health Data Import</h2>
+  <div class="card card-gv mb-3"><div class="card-body">
+    <p><a href="{% url 'health_records:bulk_template' %}">Download sample template</a></p>
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
+      <div class="mb-3">{{ form.file }}</div>
+      <button class="btn btn-gv">Upload &amp; Import</button>
+    </form>
+  </div></div>
+  {% if results %}
+  <div class="card card-gv"><div class="card-header">Summary</div><div class="card-body">
+    Total {{ results.total }} · Success <strong class="text-success">{{ results.success }}</strong> · Failed <strong class="text-danger">{{ results.failed }}</strong>
+    {% if results.failed_rows %}
+    <table class="table table-sm mt-2"><thead><tr><th>Row</th><th>Reason</th></tr></thead>
+      <tbody>{% for r in results.failed_rows %}<tr><td>{{ r.row }}</td><td>{{ r.reason }}</td></tr>{% endfor %}</tbody></table>
+    {% endif %}
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}

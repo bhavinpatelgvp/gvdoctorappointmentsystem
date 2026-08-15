@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ certificate.certificate_number }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px">
+  <h2 class="page-title">{{ certificate.certificate_number }}</h2>
+  <div class="card card-gv mb-3"><div class="card-body">
+    <p><strong>Patient:</strong> {{ certificate.patient.name }} ({{ certificate.patient.patient_id }})</p>
+    <p><strong>Doctor:</strong> Dr. {{ certificate.doctor.name }}</p>
+    <p><strong>Date:</strong> {{ certificate.consultation_date }} · <strong>Status:</strong> {{ certificate.get_status_display }}</p>
+    <p><strong>Advice:</strong> {{ certificate.medical_advice|default:"—" }}</p>
+    {% if certificate.rest_recommended %}
+    <p><strong>Rest:</strong> {{ certificate.rest_days }} days ({{ certificate.rest_start_date }} – {{ certificate.rest_end_date }})</p>
+    {% endif %}
+  </div></div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'certificates:download' certificate.pk %}" class="btn btn-gv">Download PDF</a>
+    <form method="post" action="{% url 'certificates:verify' certificate.pk %}">{% csrf_token %}<button class="btn btn-outline-gv">Verify</button></form>
+    <a href="{% url 'certificates:index' %}" class="btn btn-outline-secondary">Back</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Medical Certificates{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+    <h2 class="page-title mb-0">Medical Certificates</h2>
+    {% if user.is_doctor_user or user.is_admin_user or user.is_superuser %}
+    <a href="{% url 'certificates:create' %}" class="btn btn-gv">Issue Certificate</a>
+    {% endif %}
+  </div>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-md-6">
+      <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Certificate no., patient name or ID">
+    </div>
+    <div class="col-md-2"><button class="btn btn-gv w-100">Search</button></div>
+  </form>
+  <div class="card card-gv">
+    <div class="table-responsive">
+      <table class="table table-gv table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Certificate No.</th>
+            <th>Patient</th>
+            <th>Doctor</th>
+            <th>Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in certificates %}
+          <tr>
+            <td><a href="{% url 'certificates:detail' c.pk %}">{{ c.certificate_number }}</a></td>
+            <td>{{ c.patient.name }}</td>
+            <td>{{ c.doctor.name|default:"—" }}</td>
+            <td>{{ c.consultation_date|default:c.created_at|date:"Y-m-d" }}</td>
+            <td><span class="badge bg-secondary">{{ c.get_status_display }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="text-center text-muted">No certificates found</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% include "includes/pagination.html" %}
+</div>
+{% endblock %}

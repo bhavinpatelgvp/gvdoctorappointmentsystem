@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Staff Family Master{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="page-title mb-0">Staff Family Member Master</h2>
+    <a href="{% url 'masters:family_create' %}" class="btn btn-gv"><i class="bi bi-plus-lg"></i> Add Family Member</a>
+  </div>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-md-5"><input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Name, ID, mobile, related staff"></div>
+    <div class="col-md-2"><button class="btn btn-gv w-100">Search</button></div>
+    <div class="col-md-2"><a href="{% url 'masters:index' %}" class="btn btn-outline-gv w-100">Back</a></div>
+  </form>
+  <div class="card card-gv"><div class="table-responsive">
+    <table class="table table-gv table-hover mb-0">
+      <thead><tr><th>Patient ID</th><th>Name</th><th>Relationship</th><th>Related Staff</th><th>Mobile</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for p in page_obj %}
+      <tr>
+        <td>{{ p.patient_id }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.family_profile.relationship|default:"—" }}</td>
+        <td>{{ p.family_profile.related_staff.patient.name|default:"—" }}</td>
+        <td>{{ p.mobile|default:"—" }}</td>
+        <td><span class="badge {% if p.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">{{ p.status }}</span></td>
+        <td class="text-nowrap">
+          <a href="{% url 'masters:family_edit' p.pk %}" class="btn btn-sm btn-outline-gv">Edit</a>
+          <form method="post" action="{% url 'masters:family_toggle' p.pk %}" class="d-inline">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-secondary">{% if p.status == 'Active' %}Deactivate{% else %}Activate{% endif %}</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="7" class="text-center text-muted">No family members</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  {% include "masters/_pagination.html" %}
+</div>
+{% endblock %}

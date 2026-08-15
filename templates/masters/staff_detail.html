@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ patient.name }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between mb-3">
+    <h2 class="page-title mb-0">{{ patient.name }} <small class="text-muted">({{ patient.patient_id }})</small></h2>
+    <div>
+      <a href="{% url 'masters:staff_edit' patient.pk %}" class="btn btn-gv">Edit</a>
+      <a href="{% url 'masters:staff_list' %}" class="btn btn-outline-secondary">Back</a>
+    </div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card card-gv"><div class="card-header">Staff Profile</div><div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Employee ID</dt><dd class="col-sm-7">{{ patient.staff_profile.employee_id|default:"—" }}</dd>
+          <dt class="col-sm-5">Department</dt><dd class="col-sm-7">{{ patient.staff_profile.department|default:"—" }}</dd>
+          <dt class="col-sm-5">Designation</dt><dd class="col-sm-7">{{ patient.staff_profile.designation|default:"—" }}</dd>
+          <dt class="col-sm-5">Gender / DOB</dt><dd class="col-sm-7">{{ patient.gender|default:"—" }} / {{ patient.date_of_birth|default:"—" }}</dd>
+          <dt class="col-sm-5">Email / Mobile</dt><dd class="col-sm-7">{{ patient.email|default:"—" }} / {{ patient.mobile|default:"—" }}</dd>
+          <dt class="col-sm-5">Blood group</dt><dd class="col-sm-7">{{ patient.blood_group|default:"—" }}</dd>
+          <dt class="col-sm-5">Status</dt><dd class="col-sm-7">{{ patient.status }}</dd>
+        </dl>
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card card-gv"><div class="card-header">Family Members</div>
+        <ul class="list-group list-group-flush">
+          {% for f in family %}
+          <li class="list-group-item d-flex justify-content-between">
+            <span>{{ f.patient.name }} ({{ f.relationship }})</span>
+            <span class="badge bg-secondary">{{ f.patient.patient_id }}</span>
+          </li>
+          {% empty %}<li class="list-group-item text-muted">No family members linked</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

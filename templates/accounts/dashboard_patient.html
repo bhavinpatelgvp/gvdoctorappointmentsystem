@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}My Health Dashboard{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Welcome, {{ patient.name|default:user.get_full_name|default:user.username }}</h2>
+  {% if patient %}
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-4 col-lg-2"><a href="{% url 'patients:detail' patient.patient_id %}" class="text-decoration-none"><div class="card card-gv kpi-card h-100"><div class="kpi-label">My Profile</div></div></a></div>
+    <div class="col-6 col-md-4 col-lg-2"><a href="{% url 'appointments:index' %}" class="text-decoration-none"><div class="card card-gv kpi-card h-100"><div class="kpi-label">My Appointments</div></div></a></div>
+    <div class="col-6 col-md-4 col-lg-2"><a href="{% url 'health_records:index' %}" class="text-decoration-none"><div class="card card-gv kpi-card h-100"><div class="kpi-label">My Clinical Reports</div></div></a></div>
+    <div class="col-6 col-md-4 col-lg-2"><a href="{% url 'patients:history' patient.patient_id %}" class="text-decoration-none"><div class="card card-gv kpi-card h-100"><div class="kpi-label">My Medical History</div></div></a></div>
+    <div class="col-6 col-md-4 col-lg-2"><a href="{% url 'certificates:index' %}" class="text-decoration-none"><div class="card card-gv kpi-card h-100"><div class="kpi-label">My Certificates</div></div></a></div>
+    <div class="col-6 col-md-4 col-lg-2"><a href="{% url 'appointments:find_doctor' %}" class="text-decoration-none"><div class="card card-gv kpi-card h-100"><div class="kpi-label">Find Doctor</div></div></a></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card card-gv">
+        <div class="card-header">Upcoming Appointment</div>
+        <div class="card-body">
+          {% if upcoming_appt %}
+          <p class="mb-1"><strong>{{ upcoming_appt.appointment_number }}</strong></p>
+          <p class="mb-1">Dr. {{ upcoming_appt.doctor.name }}
+            {% if upcoming_appt.doctor.specialization %} · {{ upcoming_appt.doctor.specialization.name }}{% endif %}
+          </p>
+          <p class="mb-1">{{ upcoming_appt.appointment_date }} at {{ upcoming_appt.appointment_time }}</p>
+          <span class="badge badge-status-{{ upcoming_appt.status }}">{{ upcoming_appt.get_status_display }}</span>
+          <div class="mt-2">
+            <a href="{% url 'appointments:detail' upcoming_appt.pk %}" class="btn btn-sm btn-outline-gv">View</a>
+            <a href="{% url 'appointments:cancel' upcoming_appt.pk %}" class="btn btn-sm btn-outline-danger">Cancel</a>
+          </div>
+          {% else %}
+          <p class="text-muted mb-2">No upcoming appointments</p>
+          <a href="{% url 'appointments:find_doctor' %}" class="btn btn-gv btn-sm">Book Appointment</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card card-gv">
+        <div class="card-header">Latest Health Report</div>
+        <div class="card-body">
+          {% if latest_checkup %}
+          <p class="mb-1"><strong>{{ latest_checkup.checkup_date }}</strong></p>
+          <p class="mb-1">Dr. {{ latest_checkup.doctor.name|default:"—" }}</p>
+          <a href="{% url 'health_records:detail' latest_checkup.pk %}" class="btn btn-sm btn-outline-gv">View Report</a>
+          {% else %}
+          <p class="text-muted mb-0">No clinical reports yet</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-gv mt-3">
+    <div class="card-header">My Profile Summary</div>
+    <div class="card-body">
+      <p class="mb-1"><strong>{{ patient.name }}</strong> ({{ patient.patient_id }})</p>
+      <p class="mb-1">Category: {{ patient.get_category_display }} · Blood group: {{ patient.blood_group|default:"—" }}</p>
+      <p class="mb-0">Mobile: {{ patient.mobile|default:"—" }} · Email: {{ patient.email|default:"—" }}</p>
+    </div>
+  </div>
+
+  <div class="card card-gv mt-3">
+    <div class="card-header">Recent Appointments</div>
+    <div class="table-responsive">
+      <table class="table table-gv mb-0">
+        <thead><tr><th>ID</th><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for a in appt_history %}
+        <tr>
+          <td><a href="{% url 'appointments:detail' a.pk %}">{{ a.appointment_number }}</a></td>
+          <td>{{ a.doctor.name }}</td>
+          <td>{{ a.appointment_date }}</td>
+          <td>{{ a.appointment_time }}</td>
+          <td><span class="badge badge-status-{{ a.status }}">{{ a.get_status_display }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center">No history</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-warning">No patient profile is linked to this account. Contact the health centre administrator.</div>
+  {% endif %}
+</div>
+{% endblock %}

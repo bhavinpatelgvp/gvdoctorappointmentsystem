@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ patient.name }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between mb-3">
+    <h2 class="page-title mb-0">{{ patient.name }} <small class="text-muted">({{ patient.patient_id }})</small></h2>
+    <div>
+      <a href="{% url 'masters:student_edit' patient.pk %}" class="btn btn-gv">Edit</a>
+      <a href="{% url 'masters:student_list' %}" class="btn btn-outline-secondary">Back</a>
+    </div>
+  </div>
+  <div class="card card-gv"><div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Enrollment</dt><dd class="col-sm-9">{{ patient.student_profile.enrollment_number|default:"—" }}</dd>
+      <dt class="col-sm-3">Gender / DOB</dt><dd class="col-sm-9">{{ patient.gender|default:"—" }} / {{ patient.date_of_birth|default:"—" }}{% if patient.age %} ({{ patient.age }} yrs){% endif %}</dd>
+      <dt class="col-sm-3">Programme</dt><dd class="col-sm-9">{{ patient.student_profile.programme|default:"—" }}</dd>
+      <dt class="col-sm-3">Department</dt><dd class="col-sm-9">{{ patient.student_profile.department|default:"—" }}</dd>
+      <dt class="col-sm-3">Semester</dt><dd class="col-sm-9">{{ patient.student_profile.semester|default:"—" }}</dd>
+      <dt class="col-sm-3">Email / Mobile</dt><dd class="col-sm-9">{{ patient.email|default:"—" }} / {{ patient.mobile|default:"—" }}</dd>
+      <dt class="col-sm-3">Blood group</dt><dd class="col-sm-9">{{ patient.blood_group|default:"—" }}</dd>
+      <dt class="col-sm-3">Emergency</dt><dd class="col-sm-9">{{ patient.emergency_contact|default:"—" }}</dd>
+      <dt class="col-sm-3">Address</dt><dd class="col-sm-9">{{ patient.address|default:"—" }}</dd>
+      <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ patient.status }}</dd>
+    </dl>
+  </div></div>
+</div>
+{% endblock %}

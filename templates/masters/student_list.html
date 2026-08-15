@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Student Master{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h2 class="page-title mb-0">Student Master</h2>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'masters:student_create' %}" class="btn btn-gv"><i class="bi bi-plus-lg"></i> Add Student</a>
+      <a href="{% url 'masters:student_import' %}" class="btn btn-outline-gv">Import</a>
+      <a href="{% url 'masters:student_export' %}" class="btn btn-outline-secondary">Export CSV</a>
+    </div>
+  </div>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-md-3"><input type="text" name="q" value="{{ q }}" class="form-control" placeholder="ID, name, enrollment, mobile"></div>
+    <div class="col-md-3">
+      <select name="department" class="form-select">
+        <option value="">All departments</option>
+        {% for d in departments %}<option value="{{ d.pk }}" {% if dept == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="status" class="form-select">
+        <option value="">All statuses</option>
+        <option value="Active" {% if status == 'Active' %}selected{% endif %}>Active</option>
+        <option value="Inactive" {% if status == 'Inactive' %}selected{% endif %}>Inactive</option>
+      </select>
+    </div>
+    <div class="col-md-2"><button class="btn btn-gv w-100">Search</button></div>
+    <div class="col-md-2"><a href="{% url 'masters:index' %}" class="btn btn-outline-gv w-100">Back</a></div>
+  </form>
+  <div class="card card-gv"><div class="table-responsive">
+    <table class="table table-gv table-hover mb-0">
+      <thead><tr><th>Patient ID</th><th>Enrollment</th><th>Name</th><th>Programme</th><th>Dept</th><th>Sem</th><th>Mobile</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for p in page_obj %}
+      <tr>
+        <td><a href="{% url 'masters:student_detail' p.pk %}">{{ p.patient_id }}</a></td>
+        <td>{{ p.student_profile.enrollment_number|default:"—" }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.student_profile.programme.name|default:"—" }}</td>
+        <td>{{ p.student_profile.department.name|default:"—" }}</td>
+        <td>{{ p.student_profile.semester|default:"—" }}</td>
+        <td>{{ p.mobile|default:"—" }}</td>
+        <td><span class="badge {% if p.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">{{ p.status }}</span></td>
+        <td class="text-nowrap">
+          <a href="{% url 'masters:student_edit' p.pk %}" class="btn btn-sm btn-outline-gv">Edit</a>
+          <form method="post" action="{% url 'masters:student_toggle' p.pk %}" class="d-inline">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-secondary">{% if p.status == 'Active' %}Deactivate{% else %}Activate{% endif %}</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="9" class="text-center text-muted">No students</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  {% include "masters/_pagination.html" %}
+</div>
+{% endblock %}

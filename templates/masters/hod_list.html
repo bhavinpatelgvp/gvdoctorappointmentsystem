@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}HODs{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="page-title mb-0">HOD Master</h2>
+    <a href="{% url 'masters:hod_create' %}" class="btn btn-gv"><i class="bi bi-plus-lg"></i> Add HOD</a>
+  </div>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-md-5"><input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Search name, employee ID, email"></div>
+    <div class="col-md-2"><button class="btn btn-gv w-100">Search</button></div>
+    <div class="col-md-2"><a href="{% url 'masters:index' %}" class="btn btn-outline-gv w-100">Back</a></div>
+  </form>
+  <div class="card card-gv"><div class="table-responsive">
+    <table class="table table-gv table-hover mb-0">
+      <thead><tr><th>Employee ID</th><th>Name</th><th>Department</th><th>Email</th><th>Mobile</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for h in page_obj %}
+      <tr>
+        <td>{{ h.employee_id }}</td><td>{{ h.name }}</td><td>{{ h.department.name }}</td>
+        <td>{{ h.email|default:"—" }}</td><td>{{ h.mobile|default:"—" }}</td>
+        <td><span class="badge {% if h.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">{{ h.status }}</span></td>
+        <td class="text-nowrap">
+          <a href="{% url 'masters:hod_edit' h.pk %}" class="btn btn-sm btn-outline-gv">Edit</a>
+          <form method="post" action="{% url 'masters:hod_toggle' h.pk %}" class="d-inline">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-secondary">{% if h.status == 'Active' %}Deactivate{% else %}Activate{% endif %}</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="7" class="text-center text-muted">No HODs</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  {% include "masters/_pagination.html" %}
+</div>
+{% endblock %}

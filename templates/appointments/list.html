@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Appointments{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between mb-3 align-items-center flex-wrap gap-2">
+    <h2 class="page-title mb-0">Appointments</h2>
+    {% if can_book %}
+    <a href="{% url 'appointments:find_doctor' %}" class="btn btn-gv">Find Doctor / Book</a>
+    {% endif %}
+  </div>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-md-3"><input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Search no., patient, doctor…"></div>
+    <div class="col-md-3">
+      <select name="status" class="form-select">
+        <option value="">All statuses</option>
+        {% for code, label in statuses %}
+        <option value="{{ code }}" {% if status == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3"><input type="date" name="from" value="{{ date_from }}" class="form-control" title="From date"></div>
+    <div class="col-md-2"><button class="btn btn-gv w-100">Search</button></div>
+  </form>
+  <div class="card card-gv">
+    <div class="table-responsive">
+      <table class="table table-gv table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Patient</th>
+            <th>Doctor</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for a in appointments %}
+        <tr>
+          <td><a href="{% url 'appointments:detail' a.pk %}">{{ a.appointment_number }}</a></td>
+          <td>{{ a.patient.name }}</td>
+          <td>{{ a.doctor.name }}</td>
+          <td>{{ a.appointment_date }}</td>
+          <td>{{ a.appointment_time }}</td>
+          <td><span class="badge badge-status-{{ a.status }}">{{ a.get_status_display }}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted">No appointments found</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% include "includes/pagination.html" %}
+</div>
+{% endblock %}

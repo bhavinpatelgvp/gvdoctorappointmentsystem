@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Health Analytics{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Health Analytics{% if is_doctor_scope %} <small class="text-muted">(Your practice)</small>{% elif is_patient_scope %} <small class="text-muted">(Your records)</small>{% endif %}</h2>
+
+  <form class="card card-gv mb-4" method="get"><div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small mb-0">Analysis type</label>
+        <select name="analysis" class="form-select">
+          {% for code, label in analysis_choices %}
+          <option value="{{ code }}" {% if analysis == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-0">Category</label>
+        <select name="category" class="form-select">
+          <option value="">All categories</option>
+          {% for code, label in categories %}
+          <option value="{{ code }}" {% if category == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-0">From</label>
+        <input type="date" name="from" value="{{ date_from }}" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-0">To</label>
+        <input type="date" name="to" value="{{ date_to }}" class="form-control">
+      </div>
+      {% if analysis == 'patient_trend' %}
+      <div class="col-md-2">
+        <label class="form-label small mb-0">Patient ID</label>
+        <input name="patient_id" value="{{ patient_id }}" class="form-control" placeholder="P-STU-0001">
+      </div>
+      {% endif %}
+      <div class="col-md-1">
+        <button class="btn btn-gv w-100" type="submit">Apply</button>
+      </div>
+    </div>
+  </div></form>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.patients }}</div><div class="kpi-label">Patients</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.appointments }}</div><div class="kpi-label">Appointments</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.checkups }}</div><div class="kpi-label">Check-ups</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.certificates }}</div><div class="kpi-label">Certificates</div></div></div>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.cbc }}</div><div class="kpi-label">CBC</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.rbs }}</div><div class="kpi-label">RBS</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.bp }}</div><div class="kpi-label">BP</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.lipid }}</div><div class="kpi-label">Lipid</div></div></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-8">
+      <div class="card card-gv"><div class="card-header">Monthly Check-ups</div>
+        <div class="card-body"><canvas id="chartMonthly" height="120"></canvas></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card card-gv"><div class="card-header">Patient Categories</div>
+        <div class="card-body"><canvas id="chartCat" height="200"></canvas></div>
+      </div>
+    </div>
+    <div class="col-md-12">
+      <div class="card card-gv"><div class="card-header">Department-wise Check-ups</div>
+        <div class="card-body"><canvas id="chartDept" height="120"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  {% if cat_table %}
+  <div class="card card-gv mt-3">
+    <div class="card-header">Category breakdown{% if category %} (filtered: {{ category }}){% endif %}</div>
+    <div class="table-responsive">
+      <table class="table table-gv mb-0">
+        <thead><tr><th>Category</th><th>Patients</th></tr></thead>
+        <tbody>
+        {% for row in cat_table %}
+          <tr><td>{{ row.label }}</td><td>{{ row.count }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if appt_by_status %}
+  <div class="card card-gv mt-3">
+    <div class="card-header">Appointments by Status{% if is_doctor_scope %} (Yours){% endif %}</div>
+    <div class="card-body">
+      <canvas id="chartApptStatus" height="120"></canvas>
+      <ul class="mb-0 mt-2">{% for b in appt_by_status %}<li>{{ b.status }}: {{ b.c }}</li>{% endfor %}</ul>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if recent_checkups %}
+  <div class="card card-gv mt-3">
+    <div class="card-header">Recent Check-ups{% if is_doctor_scope %} (Yours){% endif %}</div>
+    <div class="table-responsive">
+      <table class="table table-gv mb-0">
+        <thead><tr><th>Date</th><th>Patient</th><th>Notes</th></tr></thead>
+        <tbody>
+        {% for c in recent_checkups %}
+          <tr><td>{{ c.checkup_date }}</td><td>{{ c.patient.name }}</td><td>{{ c.notes|truncatechars:40 }}</td></tr>
+        {% empty %}
+          <tr><td colspan="3" class="text-muted">None</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if analysis == 'patient_trend' and trend_patient %}
+  <h4 class="mt-4">Trends – {{ trend_patient.name }}</h4>
+  <div class="row g-3">
+    <div class="col-md-6"><div class="card card-gv"><div class="card-header">Hemoglobin</div><div class="card-body"><canvas id="chartHb" height="180"></canvas></div></div></div>
+    <div class="col-md-6"><div class="card card-gv"><div class="card-header">RBS</div><div class="card-body"><canvas id="chartRbs" height="180"></canvas></div></div></div>
+    <div class="col-md-12"><div class="card card-gv"><div class="card-header">Blood Pressure</div><div class="card-body"><canvas id="chartBp" height="120"></canvas></div></div></div>
+  </div>
+  {% elif analysis == 'patient_trend' %}
+  <div class="alert alert-info mt-3">Enter a Patient ID and click Apply to view trends.</div>
+  {% endif %}
+
+  {% if analysis == 'cbc' and cbc_stats %}
+  <div class="card card-gv mt-3"><div class="card-header">CBC – Hemoglobin</div><div class="card-body">
+    N={{ cbc_stats.n }} · Avg={{ cbc_stats.avg|floatformat:2 }} · Min={{ cbc_stats.mn }} · Max={{ cbc_stats.mx }}
+  </div></div>
+  {% endif %}
+  {% if analysis == 'rbs' and rbs_stats %}
+  <div class="card card-gv mt-3"><div class="card-header">RBS</div><div class="card-body">
+    N={{ rbs_stats.n }} · Avg={{ rbs_stats.avg|floatformat:1 }} · Min={{ rbs_stats.mn }} · Max={{ rbs_stats.mx }}
+  </div></div>
+  {% endif %}
+  {% if analysis == 'bp' and bp_stats %}
+  <div class="card card-gv mt-3"><div class="card-header">Blood Pressure</div><div class="card-body">
+    N={{ bp_stats.n }} · Avg systolic={{ bp_stats.avg_sys|floatformat:0 }} · Avg diastolic={{ bp_stats.avg_dia|floatformat:0 }}
+  </div></div>
+  {% endif %}
+  {% if analysis == 'lipid' and lipid_stats %}
+  <div class="card card-gv mt-3"><div class="card-header">Lipid Profile</div><div class="card-body">
+    N={{ lipid_stats.n }} · Avg TC={{ lipid_stats.avg_tc|floatformat:0 }} · HDL={{ lipid_stats.avg_hdl|floatformat:0 }} · LDL={{ lipid_stats.avg_ldl|floatformat:0 }}
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const brown = '#5c4033', muted = '#a0896e', green = '#4a7c59';
+(function() {
+  const m = document.getElementById('chartMonthly');
+  if (m) new Chart(m, {
+    type: 'line',
+    data: { labels: {{ monthly_labels|safe }}, datasets: [{ label: 'Check-ups', data: {{ monthly_values|safe }}, borderColor: brown, tension: 0.2 }] },
+    options: { plugins: { legend: { display: false } } }
+  });
+  const c = document.getElementById('chartCat');
+  if (c) new Chart(c, {
+    type: 'doughnut',
+    data: { labels: {{ cat_labels|safe }}, datasets: [{ data: {{ cat_values|safe }}, backgroundColor: [brown, muted, green, '#4a6fa5'] }] }
+  });
+  const d = document.getElementById('chartDept');
+  if (d) new Chart(d, {
+    type: 'bar',
+    data: { labels: {{ dept_labels|safe }}, datasets: [{ label: 'Check-ups', data: {{ dept_values|safe }}, backgroundColor: brown }] },
+    options: { plugins: { legend: { display: false } } }
+  });
+  const a = document.getElementById('chartApptStatus');
+  if (a) new Chart(a, {
+    type: 'bar',
+    data: { labels: {{ appt_status_labels|safe }}, datasets: [{ label: 'Appointments', data: {{ appt_status_values|safe }}, backgroundColor: brown }] },
+    options: { plugins: { legend: { display: false } } }
+  });
+  {% if analysis == 'patient_trend' and trend_patient %}
+  {% if hb_labels %}
+  const hb = document.getElementById('chartHb');
+  if (hb) new Chart(hb, { type: 'line', data: { labels: {{ hb_labels|safe }}, datasets: [{ label: 'Hb', data: {{ hb_values|safe }}, borderColor: brown }] } });
+  {% endif %}
+  {% if rbs_labels %}
+  const rbs = document.getElementById('chartRbs');
+  if (rbs) new Chart(rbs, { type: 'line', data: { labels: {{ rbs_labels|safe }}, datasets: [{ label: 'RBS', data: {{ rbs_values|safe }}, borderColor: green }] } });
+  {% endif %}
+  {% if bp_labels %}
+  const bp = document.getElementById('chartBp');
+  if (bp) new Chart(bp, {
+    type: 'line',
+    data: { labels: {{ bp_labels|safe }}, datasets: [
+      { label: 'Systolic', data: {{ bp_sys|safe }}, borderColor: brown },
+      { label: 'Diastolic', data: {{ bp_dia|safe }}, borderColor: muted }
+    ]}
+  });
+  {% endif %}
+  {% endif %}
+})();
+</script>
+{% endblock %}

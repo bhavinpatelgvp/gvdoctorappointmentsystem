@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Patients{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+    <h2 class="page-title mb-0">Patient Search</h2>
+    {% if user.is_doctor_user or user.is_admin_user or user.is_superuser %}
+    <a href="{% url 'patients:doctor_add' %}" class="btn btn-gv">Add Patient</a>
+    {% endif %}
+  </div>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-md-5">
+      <input type="text" name="q" value="{{ q }}" class="form-control"
+             placeholder="ID, name, mobile, enrollment, employee ID…">
+    </div>
+    <div class="col-md-3">
+      <select name="category" class="form-select">
+        <option value="">All categories</option>
+        {% for code, label in categories %}
+        <option value="{{ code }}" {% if category == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-gv w-100" type="submit">Search</button>
+    </div>
+  </form>
+  <div class="card card-gv">
+    <div class="table-responsive">
+      <table class="table table-gv table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Patient ID</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Mobile</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for p in page_obj %}
+          <tr>
+            <td><a href="{% url 'patients:detail' p.patient_id %}">{{ p.patient_id }}</a></td>
+            <td>{{ p.name }}</td>
+            <td>{{ p.get_category_display }}</td>
+            <td>{{ p.mobile|default:"—" }}</td>
+            <td>{{ p.status }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="text-center text-muted">No patients found</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% include "includes/pagination.html" %}
+</div>
+{% endblock %}

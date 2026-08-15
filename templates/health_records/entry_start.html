@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Health Check-up Entry{% endblock %}
+{% block content %}
+<div class="container" style="max-width:640px">
+  <h2 class="page-title">Health Check-up – Select Patient</h2>
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-9"><input name="q" value="{{ q }}" class="form-control" placeholder="Search patient…"></div>
+    <div class="col-3"><button class="btn btn-gv w-100">Search</button></div>
+  </form>
+  <div class="list-group">
+    {% for p in patients %}
+    <a href="{% url 'health_records:entry' p.patient_id %}" class="list-group-item list-group-item-action">
+      {{ p.name }} ({{ p.patient_id }}) – {{ p.get_category_display }}
+    </a>
+    {% empty %}{% if q %}<p class="text-muted">No patients found</p>{% endif %}{% endfor %}
+  </div>
+</div>
+{% endblock %}

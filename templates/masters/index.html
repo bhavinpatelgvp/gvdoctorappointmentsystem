@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Master Data Management{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Master Data Management</h2>
+  <p class="text-muted mb-4">Administrator workspace for institutional master records.</p>
+  <div class="row g-3">
+    {% for key, label, url, icon in masters_cards %}
+    {% endfor %}
+    <div class="col-md-3 col-6">
+      <a href="{% url 'masters:department_list' %}" class="text-decoration-none">
+        <div class="card card-gv kpi-card h-100"><div class="kpi-value">{{ counts.departments }}</div><div class="kpi-label"><i class="bi bi-building"></i> Departments</div></div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'masters:programme_list' %}" class="text-decoration-none">
+        <div class="card card-gv kpi-card h-100"><div class="kpi-value">{{ counts.programmes }}</div><div class="kpi-label"><i class="bi bi-journal-bookmark"></i> Programmes</div></div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'masters:specialization_list' %}" class="text-decoration-none">
+        <div class="card card-gv kpi-card h-100"><div class="kpi-value">{{ counts.specializations }}</div><div class="kpi-label"><i class="bi bi-heart-pulse"></i> Specializations</div></div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'masters:hod_list' %}" class="text-decoration-none">
+        <div class="card card-gv kpi-card h-100"><div class="kpi-value">{{ counts.hods }}</div><div class="kpi-label"><i class="bi bi-person-badge"></i> HODs</div></div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'masters:doctor_list' %}" class="text-decoration-none">
+        <div class="card card-gv kpi-card h-100"><div class="kpi-value">{{ counts.doctors }}</div><div class="kpi-label"><i class="bi bi-hospital"></i> Doctors</div></div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'masters:student_list' %}" class="text-decoration-none">
+        <div class="card card-gv kpi-card h-100"><div class="kpi-value">{{ counts.students }}</div><div class="kpi-label"><i class="bi bi-mortarboard"></i> Students</div></div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'masters:staff_list' %}" class="text-decoration-none">
+        <div class="card card-gv kpi-card h-100"><div class="kpi-value">{{ counts.staff }}</div><div class="kpi-label"><i class="bi bi-people"></i> Staff</div></div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'masters:family_list' %}" class="text-decoration-none">
+        <div class="card card-gv kpi-card h-100"><div class="kpi-value">{{ counts.family }}</div><div class="kpi-label"><i class="bi bi-people-fill"></i> Staff Family</div></div>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

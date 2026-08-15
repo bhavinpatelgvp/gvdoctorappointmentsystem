@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Dr. {{ doctor.name }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="page-title mb-0">Dr. {{ doctor.name }} <small class="text-muted">({{ doctor.doctor_id }})</small></h2>
+    <div>
+      <a href="{% url 'masters:doctor_edit' doctor.pk %}" class="btn btn-gv">Edit</a>
+      <a href="{% url 'masters:doctor_list' %}" class="btn btn-outline-secondary">Back</a>
+    </div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card card-gv"><div class="card-header">Profile</div><div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Gender</dt><dd class="col-sm-7">{{ doctor.gender|default:"—" }}</dd>
+          <dt class="col-sm-5">Qualification</dt><dd class="col-sm-7">{{ doctor.qualification|default:"—" }}</dd>
+          <dt class="col-sm-5">Specialization</dt><dd class="col-sm-7">{{ doctor.specialization.name|default:"—" }}</dd>
+          <dt class="col-sm-5">Department</dt><dd class="col-sm-7">{{ doctor.department.name|default:"—" }}</dd>
+          <dt class="col-sm-5">Registration No.</dt><dd class="col-sm-7">{{ doctor.registration_number|default:"—" }}</dd>
+          <dt class="col-sm-5">Experience</dt><dd class="col-sm-7">{{ doctor.experience_years }} years</dd>
+          <dt class="col-sm-5">Email</dt><dd class="col-sm-7">{{ doctor.email|default:"—" }}</dd>
+          <dt class="col-sm-5">Mobile</dt><dd class="col-sm-7">{{ doctor.mobile|default:"—" }}</dd>
+          <dt class="col-sm-5">Availability</dt><dd class="col-sm-7">{{ doctor.availability }}</dd>
+          <dt class="col-sm-5">Status</dt><dd class="col-sm-7">{{ doctor.status }}</dd>
+        </dl>
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card card-gv"><div class="card-header">Consultation Timings</div>
+        <ul class="list-group list-group-flush">
+          {% for s in schedules %}
+          <li class="list-group-item">{{ s.get_day_of_week_display }}: {{ s.start_time }} – {{ s.end_time }} ({{ s.slot_duration_minutes }} min slots, max {{ s.max_patients_per_day }}/day)</li>
+          {% empty %}<li class="list-group-item text-muted">No active schedule</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

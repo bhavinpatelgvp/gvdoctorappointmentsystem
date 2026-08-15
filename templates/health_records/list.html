@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Health Check-ups{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+    <h2 class="page-title mb-0">Health Check-ups</h2>
+    {% if user.is_doctor_user or user.is_admin_user or user.is_superuser %}
+    <div class="d-flex gap-2">
+      <a href="{% url 'health_records:entry_start' %}" class="btn btn-gv">New Entry</a>
+      <a href="{% url 'health_records:bulk_import' %}" class="btn btn-outline-gv">Bulk Import</a>
+    </div>
+    {% endif %}
+  </div>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-md-6"><input name="q" value="{{ q }}" class="form-control" placeholder="Patient name or ID"></div>
+    <div class="col-md-2"><button class="btn btn-gv w-100">Search</button></div>
+  </form>
+  <div class="card card-gv">
+    <div class="table-responsive">
+      <table class="table table-gv table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Patient</th>
+            <th>Patient ID</th>
+            <th>Doctor</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in checkups %}
+        <tr>
+          <td><a href="{% url 'health_records:detail' c.pk %}">{{ c.checkup_date }}</a></td>
+          <td>{{ c.patient.name }}</td>
+          <td>{{ c.patient.patient_id }}</td>
+          <td>{{ c.doctor.name|default:"—" }}</td>
+          <td>{{ c.notes|truncatechars:40 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted">No records</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% include "includes/pagination.html" %}
+</div>
+{% endblock %}

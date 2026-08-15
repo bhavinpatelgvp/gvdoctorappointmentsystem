@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:800px">
+  <h2 class="page-title">{{ title }}</h2>
+  <div class="card card-gv"><div class="card-body">
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
+      <div class="row">
+        {% for field in form %}
+        <div class="col-md-6 mb-3">
+          <label class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <hr>
+      <h5 class="text-secondary">Consultation Timings (Schedule)</h5>
+      {{ formset.management_form }}
+      {% if formset.non_form_errors %}<div class="alert alert-danger">{{ formset.non_form_errors }}</div>{% endif %}
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Day</th><th>Start</th><th>End</th><th>Slot (min)</th><th>Max/day</th><th>Break start</th><th>Break end</th><th>Active</th><th>Delete</th></tr></thead>
+          <tbody>
+          {% for f in formset %}
+          <tr class="schedule-row">
+            {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+            <td>{{ f.day_of_week }}</td>
+            <td>{{ f.start_time }}</td>
+            <td>{{ f.end_time }}</td>
+            <td>{{ f.slot_duration_minutes }}</td>
+            <td>{{ f.max_patients_per_day }}</td>
+            <td>{{ f.break_start }}</td>
+            <td>{{ f.break_end }}</td>
+            <td>{{ f.is_active }}</td>
+            <td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <button type="submit" class="btn btn-gv">Save Doctor</button>
+      <a href="{% url 'masters:doctor_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

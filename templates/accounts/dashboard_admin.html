@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Administrator Dashboard{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Administrator Dashboard</h2>
+  <div class="mb-3">
+    <a href="{% url 'masters:index' %}" class="btn btn-gv"><i class="bi bi-database-gear"></i> Master Data Management</a>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ total_students }}</div><div class="kpi-label">Students</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ total_staff }}</div><div class="kpi-label">Staff</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ total_family }}</div><div class="kpi-label">Family Members</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ total_doctors }}</div><div class="kpi-label">Doctors</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ total_departments }}</div><div class="kpi-label">Departments</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ today_appointments }}</div><div class="kpi-label">Today's Appointments</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ pending_appointments }}</div><div class="kpi-label">Pending</div></div></div>
+    <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ total_checkups }}</div><div class="kpi-label">Health Check-ups</div></div></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card card-gv">
+        <div class="card-header">Recent Appointments</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-gv table-hover mb-0">
+              <thead><tr><th>No.</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Status</th></tr></thead>
+              <tbody>
+              {% for a in recent_appointments %}
+              <tr>
+                <td>{{ a.appointment_number }}</td>
+                <td>{{ a.patient.name }}</td>
+                <td>{{ a.doctor.name }}</td>
+                <td>{{ a.appointment_date }}</td>
+                <td><span class="badge badge-status-{{ a.status }}">{{ a.get_status_display }}</span></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-muted text-center">No appointments</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card card-gv">
+        <div class="card-header">Recent Certificates</div>
+        <ul class="list-group list-group-flush">
+          {% for c in recent_certificates %}
+          <li class="list-group-item d-flex justify-content-between">
+            <span>{{ c.certificate_number }} – {{ c.patient.name }}</span>
+            <span class="badge bg-secondary">{{ c.get_status_display }}</span>
+          </li>
+          {% empty %}
+          <li class="list-group-item text-muted">No certificates</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

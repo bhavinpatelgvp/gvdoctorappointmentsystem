@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Cancel Appointment{% endblock %}
+{% block content %}
+<div class="container" style="max-width:520px">
+  <h2 class="page-title">Cancel {{ appointment.appointment_number }}</h2>
+  <form method="post" class="card card-gv"><div class="card-body">{% csrf_token %}
+    {% for field in form %}<div class="mb-3"><label class="form-label">{{ field.label }}</label>{{ field }}</div>{% endfor %}
+    <button class="btn btn-danger">Confirm Cancel</button>
+    <a href="{% url 'appointments:detail' appointment.pk %}" class="btn btn-outline-secondary">Back</a>
+  </div></form>
+</div>
+{% endblock %}

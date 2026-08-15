@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Medical History – {{ patient.name }}{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Medical History – {{ patient.name }} <small class="text-muted">({{ patient.patient_id }})</small></h2>
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#checkups">Health Check-ups</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#consults">Consultations</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#appts">Appointments</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#certs">Certificates</a></li>
+  </ul>
+  <div class="tab-content">
+    <div class="tab-pane fade show active" id="checkups">
+      {% for c in checkups %}
+      <div class="card card-gv mb-2"><div class="card-body py-2">
+        <a href="{% url 'health_records:detail' c.pk %}"><strong>{{ c.checkup_date }}</strong></a>
+        – Dr. {{ c.doctor.name|default:"—" }}
+        {% if c.cbc_report %} · Hb {{ c.cbc_report.hemoglobin }}{% endif %}
+        {% if c.rbs_report %} · RBS {{ c.rbs_report.value }}{% endif %}
+      </div></div>
+      {% empty %}<p class="text-muted">No check-ups</p>{% endfor %}
+    </div>
+    <div class="tab-pane fade" id="consults">
+      {% for c in consultations %}
+      <div class="card card-gv mb-2"><div class="card-body py-2">
+        <a href="{% url 'consultations:detail' c.pk %}"><strong>{{ c.consultation_date|date:"Y-m-d" }}</strong></a>
+        – {{ c.final_diagnosis|truncatechars:60|default:c.chief_complaint|truncatechars:60 }}
+      </div></div>
+      {% empty %}<p class="text-muted">No consultations</p>{% endfor %}
+    </div>
+    <div class="tab-pane fade" id="appts">
+      {% for a in appointments %}
+      <div class="card card-gv mb-2"><div class="card-body py-2">
+        {{ a.appointment_date }} {{ a.appointment_time }} – Dr. {{ a.doctor.name }}
+        <span class="badge badge-status-{{ a.status }}">{{ a.get_status_display }}</span>
+      </div></div>
+      {% empty %}<p class="text-muted">No appointments</p>{% endfor %}
+    </div>
+    <div class="tab-pane fade" id="certs">
+      {% for c in certificates %}
+      <div class="card card-gv mb-2"><div class="card-body py-2">
+        <a href="{% url 'certificates:detail' c.pk %}">{{ c.certificate_number }}</a> – {{ c.get_status_display }}
+      </div></div>
+      {% empty %}<p class="text-muted">No certificates</p>{% endfor %}
+    </div>
+  </div>
+  <a href="{% url 'patients:detail' patient.patient_id %}" class="btn btn-outline-gv mt-3">Back to Profile</a>
+</div>
+{% endblock %}

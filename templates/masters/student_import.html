@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Import Students{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px">
+  <h2 class="page-title">Bulk Import Students</h2>
+  <div class="card card-gv mb-3"><div class="card-body">
+    <p class="text-muted">Upload CSV or Excel. Required columns: <code>patient_id</code>, <code>enrollment_no</code>, <code>name</code>.</p>
+    <p><a href="{% url 'masters:student_import_template' %}">Download sample template</a></p>
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
+      <div class="mb-3">{{ form.file }}{% if form.file.errors %}<div class="text-danger small">{{ form.file.errors }}</div>{% endif %}</div>
+      <button type="submit" class="btn btn-gv">Upload &amp; Import</button>
+      <a href="{% url 'masters:student_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div></div>
+  {% if results %}
+  <div class="card card-gv"><div class="card-header">Import Summary</div><div class="card-body">
+    <p>Total: <strong>{{ results.total }}</strong> &nbsp;|&nbsp; Success: <strong class="text-success">{{ results.success }}</strong> &nbsp;|&nbsp; Failed: <strong class="text-danger">{{ results.failed }}</strong></p>
+    {% if results.failed_rows %}
+    <table class="table table-sm"><thead><tr><th>Row</th><th>Reason</th></tr></thead>
+      <tbody>{% for r in results.failed_rows %}<tr><td>{{ r.row }}</td><td>{{ r.reason }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% endif %}
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}

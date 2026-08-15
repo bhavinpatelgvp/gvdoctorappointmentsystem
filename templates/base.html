@@ -1,0 +1,73 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Gujarat Vidyapith Health System{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{% static 'css/gv-theme.css' %}" rel="stylesheet">
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="d-flex flex-column">
+{% if user.is_authenticated %}
+<nav class="navbar navbar-expand-lg navbar-gv">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-semibold" href="{% url 'accounts:dashboard' %}">
+      <i class="bi bi-heart-pulse me-1"></i> Gujarat Vidyapith Health
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link" href="{% url 'accounts:dashboard' %}">Dashboard</a></li>
+        {% if user.is_superuser or user.role_code == 'admin' or user.role_code == 'super_admin' or user.role_code == 'doctor' %}
+        <li class="nav-item"><a class="nav-link" href="{% url 'patients:index' %}">Patients</a></li>
+        {% endif %}
+        <li class="nav-item"><a class="nav-link" href="{% url 'doctors:index' %}">Doctors</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'appointments:index' %}">Appointments</a></li>
+        {% if user.role_code == 'student' or user.role_code == 'staff' or user.role_code == 'staff_family' %}
+        <li class="nav-item"><a class="nav-link" href="{% url 'appointments:find_doctor' %}">Find Doctor</a></li>
+        {% endif %}
+        <li class="nav-item"><a class="nav-link" href="{% url 'health_records:index' %}">Health Check-ups</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'certificates:index' %}">Certificates</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'analytics:index' %}">Analytics</a></li>
+        {% if user.is_superuser or user.role_code == 'admin' or user.role_code == 'super_admin' %}
+        <li class="nav-item"><a class="nav-link" href="{% url 'masters:index' %}">Master Data</a></li>
+        {% endif %}
+      </ul>
+      <span class="navbar-text text-light me-3 small">
+        {{ user.get_full_name|default:user.username }}
+        {% if user.role %}<span class="badge bg-light text-dark">{{ user.role.name }}</span>{% endif %}
+      </span>
+      <a class="btn btn-sm btn-outline-light" href="{% url 'accounts:logout' %}">Logout</a>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<main class="container-fluid py-4 flex-grow-1">
+  {% if messages %}
+  <div class="container">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer-gv text-center">
+  <div class="container">
+    Gujarat Vidyapith Doctor Appointment &amp; Health Management System &mdash; DEMO
+  </div>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

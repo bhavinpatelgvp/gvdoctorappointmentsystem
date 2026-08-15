@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Doctor Dashboard
+  <div class="mt-3 d-flex gap-2 flex-wrap">
+    <a href="{% url 'patients:doctor_add' %}" class="btn btn-gv">Add Patient</a>
+    <a href="{% url 'patients:index' %}" class="btn btn-outline-gv">Search Patient</a>
+    <a href="{% url 'health_records:entry_start' %}" class="btn btn-outline-gv">Health Check-up</a>
+    <a href="{% url 'certificates:create' %}" class="btn btn-outline-secondary">Medical Certificate</a>
+    <a href="{% url 'appointments:index' %}" class="btn btn-outline-secondary">Appointments</a>
+  </div>
+{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+  <h2 class="page-title mb-0">Doctor Dashboard – Dr. {{ doctor.name|default:user.get_full_name }}</h2>
+  <div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card card-gv kpi-card"><div class="kpi-value">{{ today_appts|length }}</div><div class="kpi-label">Today's Appointments</div></div></div>
+    <div class="col-md-4"><div class="card card-gv kpi-card"><div class="kpi-value">{{ upcoming|length }}</div><div class="kpi-label">Upcoming</div></div></div>
+    <div class="col-md-4"><div class="card card-gv kpi-card"><div class="kpi-value">{{ completed_count }}</div><div class="kpi-label">Completed (all time)</div></div></div>
+  </div>
+  <div class="card card-gv mb-3">
+    <div class="card-header">Today's Appointments ({{ today }})</div>
+    <div class="table-responsive">
+      <table class="table table-gv mb-0">
+        <thead><tr><th>Time</th><th>Patient</th><th>Category</th><th>Status</th><th>Reason</th></tr></thead>
+        <tbody>
+        {% for a in today_appts %}
+        <tr>
+          <td>{{ a.appointment_time }}</td>
+          <td><a href="{% url 'patients:detail' a.patient.patient_id %}">{{ a.patient.name }}</a></td>
+          <td>{{ a.patient.get_category_display }}</td>
+          <td><span class="badge badge-status-{{ a.status }}">{{ a.get_status_display }}</span></td>
+          <td>{{ a.reason|truncatechars:40 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-muted text-center">No appointments today</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+  <div class="mt-3 d-flex gap-2 flex-wrap">
+    <a href="{% url 'patients:doctor_add' %}" class="btn btn-gv">Add Patient</a>
+    <a href="{% url 'patients:index' %}" class="btn btn-outline-gv">Search Patient</a>
+    <a href="{% url 'health_records:entry_start' %}" class="btn btn-outline-gv">Health Check-up</a>
+    <a href="{% url 'certificates:create' %}" class="btn btn-outline-secondary">Medical Certificate</a>
+    <a href="{% url 'appointments:index' %}" class="btn btn-outline-secondary">Appointments</a>
+  </div>
+{% endblock %}

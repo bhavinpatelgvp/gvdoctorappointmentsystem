@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Doctors{% include "includes/pagination.html" %}
+{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Doctors</h2>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-md-4"><input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Name or ID"></div>
+    <div class="col-md-3">
+      <select name="specialization" class="form-select">
+        <option value="">All specializations</option>
+        {% for s in specializations %}
+        <option value="{{ s.code }}" {% if spec == s.code %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2"><button class="btn btn-gv w-100">Search</button></div>
+  </form>
+  <div class="row g-3">
+    {% for d in page_obj %}
+    <div class="col-md-4">
+      <div class="card card-gv h-100">
+        <div class="card-body">
+          <h5 class="card-title"><a href="{% url 'doctors:detail' d.doctor_id %}">Dr. {{ d.name }}</a></h5>
+          <p class="mb-1 text-muted">{{ d.specialization.name|default:"General" }}</p>
+          <p class="mb-1 small">{{ d.qualification }}</p>
+          <p class="mb-0"><span class="badge {% if d.availability == 'Available' %}bg-success{% else %}bg-secondary{% endif %}">{{ d.availability }}</span></p>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-muted">No doctors found</p>
+    {% endfor %}
+  </div>
+</div>
+{% include "includes/pagination.html" %}
+{% endblock %}

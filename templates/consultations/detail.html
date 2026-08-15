@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Consultation{% endblock %}
+{% block content %}
+<div class="container" style="max-width:800px">
+  <h2 class="page-title">Consultation – {{ consultation.patient.name }}</h2>
+  <div class="card card-gv mb-3"><div class="card-body">
+    <p><strong>Date:</strong> {{ consultation.consultation_date }} · <strong>Doctor:</strong> Dr. {{ consultation.doctor.name }}</p>
+    <p><strong>Chief complaint:</strong> {{ consultation.chief_complaint|default:"—" }}</p>
+    <p><strong>Symptoms:</strong> {{ consultation.symptoms|default:"—" }}</p>
+    <p><strong>Observations:</strong> {{ consultation.clinical_observations|default:"—" }}</p>
+    <p><strong>Diagnosis:</strong> {{ consultation.final_diagnosis|default:consultation.preliminary_diagnosis|default:"—" }}</p>
+    <p><strong>Treatment:</strong> {{ consultation.treatment|default:"—" }}</p>
+    <p><strong>Prescription:</strong> {{ consultation.prescription|default:"—" }}</p>
+    <p><strong>Advice:</strong> {{ consultation.advice|default:"—" }}</p>
+    {% if consultation.rest_recommended %}<p class="text-warning"><strong>Rest:</strong> {{ consultation.rest_days }} day(s)</p>{% endif %}
+  </div></div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if user.is_doctor_user or user.is_admin_user or user.is_superuser %}
+    <a href="{% url 'consultations:edit' consultation.pk %}" class="btn btn-outline-gv">Edit</a>
+    <a href="{% url 'health_records:entry' consultation.patient.patient_id %}" class="btn btn-gv">Health Check-up</a>
+    <a href="{% url 'certificates:create' %}?consultation={{ consultation.pk }}&patient={{ consultation.patient.patient_id }}" class="btn btn-outline-secondary">Issue Certificate</a>
+    {% endif %}
+    <a href="{% url 'patients:history' consultation.patient.patient_id %}" class="btn btn-outline-secondary">History</a>
+    <a href="{% url 'appointments:index' %}" class="btn btn-outline-secondary">Appointments</a>
+  </div>
+</div>
+{% endblock %}
