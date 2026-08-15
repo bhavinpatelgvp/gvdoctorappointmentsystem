@@ -50,10 +50,10 @@ def detail(request, pk):
     cons = get_object_or_404(
         Consultation.objects.select_related('patient', 'doctor', 'appointment'), pk=pk
     )
+    # Doctors and admins may view any consultation (clinical access for medical history).
+    # Patients may only view their own.
     if is_doctor(request.user) or is_admin(request.user):
-        # Doctors may view consultations they own; admins all
-        if not doctor_owns_consultation(request.user, cons) and not is_admin(request.user):
-            raise PermissionDenied('Not your consultation.')
+        pass
     else:
         require_patient_owner(request.user, cons.patient)
     return render(request, 'consultations/detail.html', {'consultation': cons})
