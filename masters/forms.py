@@ -71,7 +71,7 @@ class DoctorForm(BootstrapFormMixin, forms.ModelForm):
         model = Doctor
         fields = [
             'doctor_id', 'name', 'gender', 'qualification', 'medical_system', 'specialization',
-            'department', 'registration_number', 'email', 'mobile',
+            'registration_number', 'email', 'mobile',
             'experience_years', 'availability', 'status', 'profile_photo',
         ]
 
@@ -81,8 +81,6 @@ class DoctorForm(BootstrapFormMixin, forms.ModelForm):
         if 'medical_system' in self.fields:
             self.fields['medical_system'].queryset = MedicalSystem.objects.filter(status='Active')
             self.fields['medical_system'].required = False
-        self.fields['department'].queryset = Department.objects.filter(status='Active')
-        self.fields['department'].required = False
         self.fields['profile_photo'].required = False
         self._apply_bootstrap()
 
