@@ -76,7 +76,38 @@ def generate_slots(doctor, on_date):
     return slots
 
 
+
+def ensure_default_schedule(doctor):
+    """
+    If a doctor has no weekly schedule rows, create Mon–Sat 09:00–17:00
+    so they appear with bookable slots for patients.
+    """
+    if doctor.schedules.exists():
+        return
+    from datetime import time as time_cls
+    for day in range(0, 6):
+        DoctorSchedule.objects.get_or_create(
+            doctor=doctor,
+            day_of_week=day,
+            start_time=time_cls(9, 0),
+            defaults={
+                'end_time': time_cls(17, 0),
+                'slot_duration_minutes': 15,
+                'max_patients_per_day': 30,
+                'break_start': time_cls(13, 0),
+                'break_end': time_cls(14, 0),
+                'is_active': True,
+            },
+        )
+
+
 def search_doctors(medical_system=None, specialization=None, on_date=None):
+    """
+    List Active + Available doctors.
+    When a date is given, exclude doctors on leave that day.
+    Doctors without a schedule for that weekday still appear (0 open slots)
+    so newly registered doctors are visible to patients.
+    """
     qs = Doctor.objects.filter(status='Active', availability='Available').select_related(
         'specialization', 'medical_system', 'department'
     )
@@ -85,7 +116,5 @@ def search_doctors(medical_system=None, specialization=None, on_date=None):
     if specialization:
         qs = qs.filter(specialization_id=specialization)
     if on_date:
-        weekday = on_date.weekday()
-        qs = qs.filter(schedules__day_of_week=weekday, schedules__is_active=True).distinct()
         qs = qs.exclude(leaves__start_date__lte=on_date, leaves__end_date__gte=on_date)
-    return qs
+    return qs.distinct()

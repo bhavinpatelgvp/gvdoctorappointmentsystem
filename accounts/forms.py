@@ -4,7 +4,7 @@ from django.db import transaction
 
 from accounts.models import Role
 from patients.models import Patient, StudentProfile, StaffProfile
-from masters.models import Department, Programme
+from masters.models import Department, Programme, Specialization, MedicalSystem
 
 User = get_user_model()
 
@@ -122,3 +122,120 @@ class PatientRegistrationForm(forms.Form):
                     employee_id=data['employee_id'].strip(),
                 )
         return user, patient
+
+
+class DoctorRegistrationForm(forms.Form):
+    """Self-registration for doctors at the login screen."""
+    username = forms.CharField(max_length=150, widget=forms.TextInput(attrs={
+        'class': 'form-control', 'placeholder': 'Choose a username', 'autocomplete': 'username',
+    }))
+    password = forms.CharField(min_length=6, widget=forms.PasswordInput(attrs={
+        'class': 'form-control', 'placeholder': 'Min 6 characters', 'autocomplete': 'new-password',
+    }))
+    password_confirm = forms.CharField(label='Confirm password', widget=forms.PasswordInput(attrs={
+        'class': 'form-control', 'placeholder': 'Confirm password', 'autocomplete': 'new-password',
+    }))
+    first_name = forms.CharField(max_length=80, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(max_length=80, required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    email = forms.EmailField(required=False, widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    mobile = forms.CharField(max_length=15, required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    gender = forms.ChoiceField(
+        choices=[('', '—'), ('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')],
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    qualification = forms.CharField(max_length=200, required=False, widget=forms.TextInput(attrs={
+        'class': 'form-control', 'placeholder': 'e.g. MBBS, MD',
+    }))
+    registration_number = forms.CharField(max_length=50, required=False, widget=forms.TextInput(attrs={
+        'class': 'form-control', 'placeholder': 'Medical registration number',
+    }))
+    experience_years = forms.IntegerField(min_value=0, required=False, initial=0, widget=forms.NumberInput(attrs={
+        'class': 'form-control', 'min': 0,
+    }))
+    specialization = forms.ModelChoiceField(
+        queryset=Specialization.objects.filter(status='Active').order_by('name'),
+        required=False,
+        empty_label='— Select specialization —',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    medical_system = forms.ModelChoiceField(
+        queryset=MedicalSystem.objects.filter(status='Active').order_by('name'),
+        required=False,
+        empty_label='— Select medical system —',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Re-bind querysets in case DB was empty at import time
+        from masters.models import Specialization, MedicalSystem
+        self.fields['specialization'].queryset = Specialization.objects.filter(status='Active').order_by('name')
+        self.fields['medical_system'].queryset = MedicalSystem.objects.filter(status='Active').order_by('name')
+
+    def clean_username(self):
+        username = self.cleaned_data['username'].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError('This username is already taken.')
+        return username
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('password') and cleaned.get('password_confirm'):
+            if cleaned['password'] != cleaned['password_confirm']:
+                self.add_error('password_confirm', 'Passwords do not match.')
+        return cleaned
+
+    def save(self):
+        from doctors.models import Doctor
+        data = self.cleaned_data
+        role = Role.objects.get(code=Role.DOCTOR)
+        full_name = f"{data['first_name']} {data.get('last_name') or ''}".strip()
+
+        with transaction.atomic():
+            user = User.objects.create_user(
+                username=data['username'],
+                password=data['password'],
+                email=data.get('email') or '',
+                first_name=data['first_name'],
+                last_name=data.get('last_name') or '',
+                role=role,
+                gender=data.get('gender') or '',
+                mobile=data.get('mobile') or '',
+            )
+            count = Doctor.objects.count() + 1
+            doctor_id = f'DOC-{count:04d}'
+            while Doctor.objects.filter(doctor_id=doctor_id).exists():
+                count += 1
+                doctor_id = f'DOC-{count:04d}'
+            doctor = Doctor.objects.create(
+                doctor_id=doctor_id,
+                user=user,
+                name=full_name or data['username'],
+                gender=data.get('gender') or '',
+                qualification=data.get('qualification') or '',
+                registration_number=data.get('registration_number') or '',
+                email=data.get('email') or '',
+                mobile=data.get('mobile') or '',
+                experience_years=data.get('experience_years') or 0,
+                specialization=data.get('specialization'),
+                medical_system=data.get('medical_system'),
+                status='Active',
+                availability='Available',
+            )
+            # Default clinic hours so the doctor appears in Find Doctor / Book
+            from doctors.models import DoctorSchedule
+            from datetime import time as time_cls
+            for day in range(0, 6):  # Monday–Saturday
+                DoctorSchedule.objects.create(
+                    doctor=doctor,
+                    day_of_week=day,
+                    start_time=time_cls(9, 0),
+                    end_time=time_cls(17, 0),
+                    slot_duration_minutes=15,
+                    max_patients_per_day=30,
+                    break_start=time_cls(13, 0),
+                    break_end=time_cls(14, 0),
+                    is_active=True,
+                )
+        return user, doctor

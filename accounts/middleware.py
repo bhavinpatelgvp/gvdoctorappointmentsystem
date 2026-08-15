@@ -18,7 +18,11 @@ class LoginRequiredMiddleware:
     PUBLIC_PREFIXES = (
         '/accounts/login/',
         '/accounts/register/',
+        '/accounts/register/doctor/',
         '/accounts/logout/',
+        '/accounts/google/',
+        '/accounts/social/',
+        '/accounts/3rdparty/',
         '/static/',
         '/media/',
         '/admin/login/',  # Django admin has its own auth

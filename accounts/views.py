@@ -106,6 +106,16 @@ def logout_view(request):
 def dashboard(request):
     user = request.user
     role = user.role_code if user.role else None
+    # Gmail sign-in users without a clinical role must complete profile first
+    if not role and not user.is_superuser:
+        return redirect('accounts:google_complete')
+    # Re-check active profile status for session continuity
+    allowed, reason = _user_may_login(user)
+    if not allowed and not user.is_superuser:
+        from django.contrib.auth import logout as django_logout
+        django_logout(request)
+        messages.error(request, reason or 'Access denied.')
+        return redirect('accounts:login')
     today = date.today()
     context = {'role': role, 'today': today}
 
@@ -178,3 +188,34 @@ def register_view(request):
         return redirect('accounts:login')
     return render(request, 'accounts/register.html', {'form': form})
 
+
+
+def register_doctor_view(request):
+    """Public doctor self-registration at the login screen."""
+    if request.user.is_authenticated:
+        return redirect('accounts:dashboard')
+    from accounts.forms import DoctorRegistrationForm
+    from audit.services import log_action
+    form = DoctorRegistrationForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        user, doctor = form.save()
+        log_action(user, 'register', 'accounts', description=f'Doctor registered: {doctor.doctor_id}', request=request)
+        messages.success(
+            request,
+            f'Registration successful. Your doctor ID is {doctor.doctor_id}. You can sign in now.',
+        )
+        return redirect('accounts:login')
+    return render(request, 'accounts/register_doctor.html', {'form': form})
+
+
+@login_required
+def google_complete_profile(request):
+    """
+    New users who signed in with Gmail but have no role yet
+    choose Patient or Doctor registration path to finish setup.
+    """
+    user = request.user
+    if user.role_id:
+        return redirect('accounts:dashboard')
+    # Soft allow: user is authenticated via Google but not yet in clinical RBAC
+    return render(request, 'accounts/google_complete_profile.html', {'user': user})

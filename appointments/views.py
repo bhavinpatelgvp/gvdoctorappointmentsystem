@@ -82,13 +82,15 @@ def find_doctor(request):
         except ValueError:
             messages.error(request, 'Invalid date.')
     if request.GET.get('search'):
+        from .services import ensure_default_schedule
         doctors = list(search_doctors(
             medical_system=ms or None,
             specialization=spec or None,
             on_date=on_date,
         ))
-        # attach slots if date given
+        # attach slots if date given; ensure schedule so new doctors are bookable
         for d in doctors:
+            ensure_default_schedule(d)
             d.available_slots = generate_slots(d, on_date) if on_date else []
             d.open_slot_count = sum(1 for s in d.available_slots if s['available'])
     return render(request, 'appointments/find_doctor.html', {
