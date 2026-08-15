@@ -84,8 +84,13 @@ def create(request):
             cert.created_by = request.user
             cert.save()
             try:
-                pdf_bytes = generate_certificate_pdf(cert)
-                cert.pdf_file.save(f'{cert.certificate_number}.pdf', ContentFile(pdf_bytes), save=True)
+                pdf_buffer = generate_certificate_pdf(cert)
+                pdf_content = pdf_buffer.getvalue() if hasattr(pdf_buffer, 'getvalue') else pdf_buffer
+                cert.pdf_file.save(
+                    f'{cert.certificate_number}.pdf',
+                    ContentFile(pdf_content),
+                    save=True,
+                )
             except Exception as exc:
                 messages.warning(request, f'Certificate saved but PDF failed: {exc}')
             notify_certificate(cert, 'issued')
@@ -104,17 +109,37 @@ def detail(request, pk):
         MedicalCertificate.objects.select_related('patient', 'doctor', 'consultation'), pk=pk
     )
     require_patient_owner(request.user, cert.patient)
-    return render(request, 'certificates/detail.html', {'certificate': cert})
+    return render(request, 'certificates/detail.html', {
+        'certificate': cert,
+        'can_verify': is_doctor(request.user) or is_admin(request.user),
+    })
 
 
 @login_required
 def download(request, pk):
-    cert = get_object_or_404(MedicalCertificate, pk=pk)
+    cert = get_object_or_404(
+        MedicalCertificate.objects.select_related('patient', 'doctor', 'consultation'),
+        pk=pk,
+    )
     require_patient_owner(request.user, cert.patient)
+    # Generate PDF on demand if missing (e.g. seed data or earlier generation failure)
     if not cert.pdf_file:
-        messages.error(request, 'PDF not available.')
-        return redirect('certificates:detail', pk=pk)
-    return FileResponse(cert.pdf_file.open('rb'), as_attachment=True, filename=f'{cert.certificate_number}.pdf')
+        try:
+            pdf_buffer = generate_certificate_pdf(cert)
+            pdf_content = pdf_buffer.getvalue() if hasattr(pdf_buffer, 'getvalue') else pdf_buffer
+            cert.pdf_file.save(
+                f'{cert.certificate_number}.pdf',
+                ContentFile(pdf_content),
+                save=True,
+            )
+        except Exception as exc:
+            messages.error(request, f'PDF not available: {exc}')
+            return redirect('certificates:detail', pk=pk)
+    return FileResponse(
+        cert.pdf_file.open('rb'),
+        as_attachment=True,
+        filename=f'{cert.certificate_number}.pdf',
+    )
 
 
 @doctor_required
