@@ -1,0 +1,100 @@
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from datetime import date
+
+from accounts.models import Role
+from patients.models import Patient
+from doctors.models import Doctor
+from appointments.models import Appointment
+from health_records.models import HealthCheckup
+from certificates.models import MedicalCertificate
+from masters.models import Department, HOD
+from audit.services import log_action
+from accounts.authorization import get_linked_patient
+
+
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('accounts:dashboard')
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            log_action(user, 'login', 'accounts', description='User logged in', request=request)
+            messages.success(request, f'Welcome, {user.get_full_name() or user.username}!')
+            return redirect('accounts:dashboard')
+        messages.error(request, 'Invalid username or password.')
+    return render(request, 'accounts/login.html')
+
+
+def logout_view(request):
+    if request.user.is_authenticated:
+        log_action(request.user, 'logout', 'accounts', description='User logged out', request=request)
+    logout(request)
+    messages.info(request, 'You have been logged out.')
+    return redirect('accounts:login')
+
+
+@login_required
+def dashboard(request):
+    user = request.user
+    role = user.role_code if user.role else None
+    today = date.today()
+    context = {'role': role, 'today': today}
+
+    if role in (Role.ADMIN, Role.SUPER_ADMIN) or user.is_superuser:
+        context.update({
+            'total_students': Patient.objects.filter(category=Patient.CATEGORY_STUDENT, status='Active').count(),
+            'total_staff': Patient.objects.filter(category=Patient.CATEGORY_STAFF, status='Active').count(),
+            'total_family': Patient.objects.filter(category=Patient.CATEGORY_STAFF_FAMILY, status='Active').count(),
+            'total_doctors': Doctor.objects.filter(status='Active').count(),
+            'total_hods': HOD.objects.filter(status='Active').count(),
+            'total_departments': Department.objects.filter(status='Active').count(),
+            'today_appointments': Appointment.objects.filter(appointment_date=today).count(),
+            'completed_appointments': Appointment.objects.filter(status=Appointment.STATUS_COMPLETED).count(),
+            'pending_appointments': Appointment.objects.filter(
+                status__in=[Appointment.STATUS_REQUESTED, Appointment.STATUS_CONFIRMED]
+            ).count(),
+            'cancelled_appointments': Appointment.objects.filter(status=Appointment.STATUS_CANCELLED).count(),
+            'total_checkups': HealthCheckup.objects.count(),
+            'recent_certificates': MedicalCertificate.objects.order_by('-created_at')[:5],
+            'recent_appointments': Appointment.objects.select_related('patient', 'doctor').order_by('-created_at')[:8],
+        })
+        return render(request, 'accounts/dashboard_admin.html', context)
+
+    if role == Role.DOCTOR:
+        doctor = getattr(user, 'doctor_profile', None)
+        if doctor:
+            context.update({
+                'doctor': doctor,
+                'today_appts': Appointment.objects.filter(
+                    doctor=doctor, appointment_date=today
+                ).exclude(status=Appointment.STATUS_CANCELLED).select_related('patient').order_by('appointment_time'),
+                'upcoming': Appointment.objects.filter(
+                    doctor=doctor, appointment_date__gt=today,
+                    status__in=[Appointment.STATUS_CONFIRMED, Appointment.STATUS_REQUESTED],
+                ).select_related('patient').order_by('appointment_date', 'appointment_time')[:10],
+                'completed_count': Appointment.objects.filter(
+                    doctor=doctor, status=Appointment.STATUS_COMPLETED
+                ).count(),
+            })
+        return render(request, 'accounts/dashboard_doctor.html', context)
+
+    patient = get_linked_patient(user)
+    if patient:
+        context.update({
+            'patient': patient,
+            'upcoming_appt': Appointment.objects.filter(
+                patient=patient,
+                appointment_date__gte=today,
+                status__in=[Appointment.STATUS_CONFIRMED, Appointment.STATUS_REQUESTED],
+            ).select_related('doctor').order_by('appointment_date', 'appointment_time').first(),
+            'appt_history': Appointment.objects.filter(patient=patient).select_related('doctor').order_by('-appointment_date')[:10],
+            'latest_checkup': HealthCheckup.objects.filter(patient=patient).order_by('-checkup_date').first(),
+            'certificates': MedicalCertificate.objects.filter(patient=patient).order_by('-created_at')[:5],
+        })
+    return render(request, 'accounts/dashboard_patient.html', context)
