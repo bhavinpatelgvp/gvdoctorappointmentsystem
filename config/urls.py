@@ -8,6 +8,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', lambda r: redirect('accounts:dashboard') if r.user.is_authenticated else redirect('accounts:login')),
     path('accounts/', include('accounts.urls')),
+    path('accounts/', include('allauth.urls')),  # Google / social login
     path('masters/', include('masters.urls')),
     path('patients/', include('patients.urls')),
     path('doctors/', include('doctors.urls')),
