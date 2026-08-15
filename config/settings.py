@@ -46,6 +46,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'accounts.middleware.LoginRequiredMiddleware',  # no page without login
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'audit.middleware.AuditMiddleware',
@@ -137,6 +138,11 @@ REST_FRAMEWORK = {
 # Session
 SESSION_COOKIE_AGE = 3600 * 8  # 8 hours
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False  # set True in production with HTTPS
+SESSION_COOKIE_SAMESITE = "Lax"
+# Idle timeout handled by SESSION_COOKIE_AGE + SAVE_EVERY_REQUEST
 
 # Messages
 from django.contrib.messages import constants as messages

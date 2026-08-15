@@ -24,7 +24,7 @@ def generate_certificate_pdf(certificate):
     c.setFont('Helvetica', 11)
     c.drawCentredString(width / 2, height - 48 * mm, 'Medical Certificate')
     c.setFont('Helvetica', 9)
-    c.drawCentredString(width / 2, height - 55 * mm, '(Institutional Healthcare – DEMO)')
+    c.drawCentredString(width / 2, height - 55 * mm, '(Institutional Healthcare)')
 
     y = height - 75 * mm
     c.setFont('Helvetica', 11)
