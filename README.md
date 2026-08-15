@@ -22,6 +22,17 @@ Professional Django-based healthcare platform for Gujarat Vidyapith.
 - Django ORM, Authentication, Crispy Forms, REST Framework (API-ready)
 - Bootstrap 5, Chart.js-ready structure
 
+## Google (Gmail) sign-in
+
+1. Install: `pip install -r requirements.txt` (includes `django-allauth`)
+2. Create OAuth client in [Google Cloud Console](https://console.cloud.google.com/) (Web application).
+3. Authorized redirect URI: `http://127.0.0.1:8000/accounts/google/login/callback/`
+4. Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`
+5. Run migrations: `python manage.py migrate`
+6. Ensure Site domain is `127.0.0.1:8000` in Django admin → Sites (or `python manage.py shell` update).
+
+Login page shows **Sign in with Gmail**. Existing users are matched by email; new Gmail users complete Patient or Doctor registration.
+
 ## Quick Start
 
 ```bash
@@ -31,7 +42,6 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Database (demo uses SQLite path from settings / env)
-python manage.py makemigrations
 python manage.py migrate
 python manage.py seed_demo_data
 
