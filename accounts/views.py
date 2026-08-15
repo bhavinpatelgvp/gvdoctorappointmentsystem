@@ -15,17 +15,80 @@ from audit.services import log_action
 from accounts.authorization import get_linked_patient
 
 
+def _user_may_login(user):
+    """
+    Allow login only when the account and its linked role profile are Active.
+    - Django is_active and custom is_active_user must be True
+    - Doctor: linked Doctor.status == Active
+    - HOD: linked HOD.status == Active
+    - Student / Staff / Staff Family: linked Patient.status == Active
+    - Admin / Super Admin: only user flags (no extra profile required)
+    """
+    if not user:
+        return False, 'Invalid username or password.'
+    if not user.is_active or not getattr(user, 'is_active_user', True):
+        return False, 'Your account is inactive. Contact the administrator.'
+
+    role_code = user.role_code if getattr(user, 'role', None) else None
+
+    # Admins / superusers: user flags only
+    if user.is_superuser or role_code in (Role.ADMIN, Role.SUPER_ADMIN):
+        return True, None
+
+    if role_code == Role.DOCTOR:
+        try:
+            doctor = user.doctor_profile
+        except Exception:
+            doctor = None
+        if doctor is None:
+            return False, 'No doctor profile linked. Contact the administrator.'
+        if doctor.status != 'Active':
+            return False, 'Your doctor profile is inactive. Contact the administrator.'
+        return True, None
+
+    if role_code == Role.HOD:
+        try:
+            hod = user.hod_profile
+        except Exception:
+            hod = None
+        if hod is None:
+            return False, 'No HOD profile linked. Contact the administrator.'
+        if hod.status != 'Active':
+            return False, 'Your HOD profile is inactive. Contact the administrator.'
+        return True, None
+
+    if role_code in (Role.STUDENT, Role.STAFF, Role.STAFF_FAMILY):
+        patient = get_linked_patient(user)
+        if patient is None:
+            return False, 'No patient profile linked. Contact the administrator.'
+        if patient.status != 'Active':
+            return False, 'Your patient record is inactive. Contact the administrator.'
+        return True, None
+
+    # Unknown / missing role – deny
+    return False, 'Your account role is not authorized to sign in.'
+
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('accounts:dashboard')
+    if request.GET.get('session') == 'expired':
+        messages.warning(request, 'Your session has expired or your account is inactive. Please sign in again.')
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
         user = authenticate(request, username=username, password=password)
         if user is not None:
+            allowed, reason = _user_may_login(user)
+            if not allowed:
+                messages.error(request, reason or 'Login not allowed for this account.')
+                return render(request, 'accounts/login.html')
             login(request, user)
             log_action(user, 'login', 'accounts', description='User logged in', request=request)
             messages.success(request, f'Welcome, {user.get_full_name() or user.username}!')
+            next_url = request.GET.get('next') or request.POST.get('next') or ''
+            if next_url.startswith('/') and not next_url.startswith('//'):
+                return redirect(next_url)
             return redirect('accounts:dashboard')
         messages.error(request, 'Invalid username or password.')
     return render(request, 'accounts/login.html')

@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Count, Avg, Min, Max
 from django.db.models.functions import TruncMonth
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
 from accounts.authorization import is_doctor, is_admin, get_linked_patient, get_doctor_profile
 from patients.models import Patient
@@ -30,7 +30,7 @@ def _qs_params(request, extra=None):
 
 @login_required
 def index(request):
-    analysis = request.GET.get('analysis', 'dashboard')
+    analysis = request.GET.get('analysis', '')
     date_from = request.GET.get('from', '')
     date_to = request.GET.get('to', '')
     patient_id = request.GET.get('patient_id', '')
@@ -48,30 +48,33 @@ def index(request):
         patient_id = own_patient.patient_id
         # Patients only need a focused set of analysis types
         analysis_choices = [
-            ('dashboard', 'My Health Overview'),
+            ('', '— Select analysis type —'),
+            ('monthly', 'Monthly Check-ups'),
             ('patient_trend', 'My Health Trend'),
             ('cbc', 'CBC Analysis'),
             ('rbs', 'RBS Analysis'),
             ('bp', 'Blood Pressure Analysis'),
             ('lipid', 'Lipid Profile Analysis'),
-            ('monthly', 'Monthly Analysis'),
         ]
-        if analysis not in dict(analysis_choices):
-            analysis = 'dashboard'
+        if analysis and analysis not in dict(analysis_choices):
+            analysis = ''
     else:
         analysis_choices = [
-            ('dashboard', 'Analytics Dashboard'),
+            ('', '— Select analysis type —'),
+            ('patient_categories', 'Patient Categories'),
+            ('monthly', 'Monthly Check-ups'),
+            ('department', 'Department-wise Check-ups'),
+            ('category', 'Category breakdown'),
+            ('doctor_appt', 'Appointments by Status (Yours)'),
+            ('doctor_checkup', 'Recent Check-ups (Yours)'),
             ('patient_trend', 'Patient Health Trend'),
             ('cbc', 'CBC Analysis'),
             ('rbs', 'RBS Analysis'),
             ('bp', 'Blood Pressure Analysis'),
             ('lipid', 'Lipid Profile Analysis'),
-            ('department', 'Department Analysis'),
-            ('monthly', 'Monthly Analysis'),
-            ('doctor_appt', 'Doctor Appointments'),
-            ('doctor_checkup', 'Doctor Patient Check-ups'),
-            ('category', 'Category Analysis'),
         ]
+        if analysis and analysis not in dict(analysis_choices):
+            analysis = '' 
 
     context = {
         'analysis': analysis,
@@ -127,14 +130,14 @@ def index(request):
         'certificates': MedicalCertificate.objects.filter(patient__in=patient_qs).count(),
     }
 
-    # ---- Charts / tables driven by filters (analysis type + category + dates) ----
-    show_monthly = analysis in ('dashboard', 'monthly', 'doctor_checkup')
-    show_categories = analysis in ('dashboard', 'category') and not is_patient_scope
-    show_department = analysis in ('dashboard', 'department') and not is_patient_scope
-    show_appt_status = analysis in ('dashboard', 'doctor_appt')
-    show_recent_checkups = analysis in ('dashboard', 'doctor_checkup') or is_doctor_scope
+    # ---- Charts / tables driven by filters (analysis type) — nothing shown until a type is chosen ----
+    show_monthly = analysis == 'monthly'
+    show_categories = analysis in ('category', 'patient_categories') and not is_patient_scope
+    show_department = analysis == 'department' and not is_patient_scope
+    show_appt_status = analysis == 'doctor_appt'
+    show_recent_checkups = analysis == 'doctor_checkup'
     show_kpi = analysis in (
-        'dashboard', 'monthly', 'category', 'department',
+        'monthly', 'category', 'patient_categories', 'department',
         'doctor_appt', 'doctor_checkup',
     )
 
@@ -269,3 +272,224 @@ def index(request):
         )
 
     return render(request, 'analytics/dashboard.html', context)
+
+
+# ── Exports (CSV downloads with filters) ─────────────────────
+import csv
+from django.http import HttpResponse
+from django.contrib import messages
+from accounts.permissions import admin_required
+from accounts.authorization import is_doctor, is_admin, get_doctor_profile, get_linked_patient
+from doctors.models import Doctor
+from datetime import datetime
+
+
+def _apply_export_filters(request, qs, date_field='created_at', patient_field='patient'):
+    """Common filters: patient_id, category, from, to, year."""
+    patient_id = request.GET.get('patient_id', '').strip()
+    category = request.GET.get('category', '').strip()
+    date_from = request.GET.get('from', '').strip()
+    date_to = request.GET.get('to', '').strip()
+    year = request.GET.get('year', '').strip()
+    if patient_id:
+        qs = qs.filter(**{f'{patient_field}__patient_id': patient_id})
+    if category:
+        qs = qs.filter(**{f'{patient_field}__category': category})
+    if date_from:
+        qs = qs.filter(**{f'{date_field}__gte': date_from})
+    if date_to:
+        qs = qs.filter(**{f'{date_field}__lte': date_to})
+    if year:
+        try:
+            y = int(year)
+            qs = qs.filter(**{f'{date_field}__year': y})
+        except ValueError:
+            pass
+    return qs
+
+
+@login_required
+def export_patients(request):
+    """Admin/Doctor: export patients (scoped for doctor)."""
+    user = request.user
+    if not (is_admin(user) or is_doctor(user)):
+        messages.error(request, 'Permission denied.')
+        return redirect('analytics:index')
+    qs = Patient.objects.filter(status='Active').select_related(
+        'student_profile', 'staff_profile', 'family_profile'
+    ).order_by('name')
+    doctor = get_doctor_profile(user) if is_doctor(user) and not is_admin(user) else None
+    if doctor:
+        # Patients who had appt or checkup with this doctor
+        from appointments.models import Appointment
+        from health_records.models import HealthCheckup
+        pids = set(
+            Appointment.objects.filter(doctor=doctor).values_list('patient_id', flat=True)
+        ) | set(
+            HealthCheckup.objects.filter(doctor=doctor).values_list('patient_id', flat=True)
+        )
+        qs = qs.filter(pk__in=pids)
+    category = request.GET.get('category', '').strip()
+    patient_id = request.GET.get('patient_id', '').strip()
+    if category:
+        qs = qs.filter(category=category)
+    if patient_id:
+        qs = qs.filter(patient_id=patient_id)
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="patients_export.csv"'
+    w = csv.writer(response)
+    w.writerow(['Patient ID', 'Name', 'Category', 'Mobile', 'Email', 'Gender', 'DOB', 'Status'])
+    for p in qs:
+        w.writerow([
+            p.patient_id, p.name, p.get_category_display(), p.mobile or '',
+            p.email or '', getattr(p, 'gender', '') or '', getattr(p, 'date_of_birth', '') or '',
+            p.status,
+        ])
+    return response
+
+
+@login_required
+def export_doctors(request):
+    """Admin only: export doctors."""
+    if not is_admin(request.user):
+        messages.error(request, 'Permission denied.')
+        return redirect('analytics:index')
+    qs = Doctor.objects.select_related('user', 'specialization').order_by('user__first_name')
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="doctors_export.csv"'
+    w = csv.writer(response)
+    w.writerow(['Doctor ID', 'Name', 'Specialization', 'Mobile', 'Email', 'Status'])
+    for d in qs:
+        name = d.user.get_full_name() if d.user else str(d)
+        w.writerow([
+            getattr(d, 'doctor_id', d.pk), name,
+            d.specialization.name if d.specialization else '',
+            getattr(d, 'mobile', '') or '', getattr(d.user, 'email', '') if d.user else '',
+            d.status,
+        ])
+    return response
+
+
+@login_required
+def export_appointments(request):
+    """Admin/Doctor: export appointments with filters."""
+    user = request.user
+    if not (is_admin(user) or is_doctor(user)):
+        messages.error(request, 'Permission denied.')
+        return redirect('analytics:index')
+    qs = Appointment.objects.select_related('patient', 'doctor', 'doctor__user').order_by('-appointment_date')
+    doctor = get_doctor_profile(user) if is_doctor(user) and not is_admin(user) else None
+    if doctor:
+        qs = qs.filter(doctor=doctor)
+    qs = _apply_export_filters(request, qs, date_field='appointment_date', patient_field='patient')
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="appointments_export.csv"'
+    w = csv.writer(response)
+    w.writerow(['Date', 'Time', 'Patient ID', 'Patient', 'Doctor', 'Status', 'Reason'])
+    for a in qs:
+        doc_name = a.doctor.user.get_full_name() if a.doctor and a.doctor.user else ''
+        w.writerow([
+            a.appointment_date, a.appointment_time, a.patient.patient_id, a.patient.name,
+            doc_name, a.status, getattr(a, 'reason', '') or '',
+        ])
+    return response
+
+
+@login_required
+def export_health_checkups(request):
+    """Admin/Doctor: export health checkups with filters."""
+    user = request.user
+    if not (is_admin(user) or is_doctor(user)):
+        messages.error(request, 'Permission denied.')
+        return redirect('analytics:index')
+    qs = HealthCheckup.objects.select_related('patient', 'doctor', 'doctor__user').order_by('-checkup_date')
+    doctor = get_doctor_profile(user) if is_doctor(user) and not is_admin(user) else None
+    if doctor:
+        qs = qs.filter(doctor=doctor)
+    qs = _apply_export_filters(request, qs, date_field='checkup_date', patient_field='patient')
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="health_checkups_export.csv"'
+    w = csv.writer(response)
+    w.writerow(['Checkup Date', 'Patient ID', 'Patient', 'Doctor', 'Notes', 'Category'])
+    for h in qs:
+        doc_name = h.doctor.user.get_full_name() if h.doctor and h.doctor.user else ''
+        w.writerow([
+            h.checkup_date, h.patient.patient_id, h.patient.name, doc_name,
+            (h.notes or '')[:200], h.patient.get_category_display(),
+        ])
+    return response
+
+
+@login_required
+def export_patient_history(request):
+    """Patient (or admin/doctor viewing a patient): export own/selected patient history."""
+    user = request.user
+    own = get_linked_patient(user)
+    patient_id = request.GET.get('patient_id', '').strip()
+    date_from = request.GET.get('from', '').strip()
+    date_to = request.GET.get('to', '').strip()
+
+    if own and not is_admin(user) and not is_doctor(user):
+        patient = own
+    elif patient_id:
+        patient = Patient.objects.filter(patient_id=patient_id).first()
+        if not patient:
+            messages.error(request, 'Patient not found.')
+            return redirect('analytics:index')
+        if is_doctor(user) and not is_admin(user):
+            from accounts.authorization import doctor_can_access_patient
+            if not doctor_can_access_patient(user, patient):
+                messages.error(request, 'Access denied.')
+                return redirect('analytics:index')
+    else:
+        messages.error(request, 'Specify patient or login as patient.')
+        return redirect('analytics:index')
+
+    hc_qs = HealthCheckup.objects.filter(patient=patient).order_by('-checkup_date')
+    if date_from:
+        hc_qs = hc_qs.filter(checkup_date__gte=date_from)
+    if date_to:
+        hc_qs = hc_qs.filter(checkup_date__lte=date_to)
+
+    response = HttpResponse(content_type='text/csv')
+    fname = f"patient_{patient.patient_id}_history.csv"
+    response['Content-Disposition'] = f'attachment; filename="{fname}"'
+    w = csv.writer(response)
+    w.writerow(['Type', 'Date', 'Details', 'Notes'])
+    for h in hc_qs:
+        w.writerow(['Health Checkup', h.checkup_date, '', (h.notes or '')[:300]])
+    appts = Appointment.objects.filter(patient=patient).order_by('-appointment_date')
+    if date_from:
+        appts = appts.filter(appointment_date__gte=date_from)
+    if date_to:
+        appts = appts.filter(appointment_date__lte=date_to)
+    for a in appts:
+        w.writerow(['Appointment', a.appointment_date, a.status, getattr(a, 'reason', '') or ''])
+    certs = MedicalCertificate.objects.filter(patient=patient).order_by('-created_at')
+    for c in certs:
+        w.writerow(['Certificate', c.created_at.date() if c.created_at else '', getattr(c, 'certificate_type', '') or '', ''])
+    return response
+
+
+@login_required
+def downloads_hub(request):
+    """Page with download buttons and filter form for admin/doctor/patient."""
+    user = request.user
+    is_adm = is_admin(user)
+    is_doc = is_doctor(user) and not is_adm
+    own = get_linked_patient(user)
+    is_pat = bool(own) and not is_adm and not is_doc
+    years = list(range(datetime.now().year, datetime.now().year - 6, -1))
+    return render(request, 'analytics/downloads.html', {
+        'is_admin': is_adm,
+        'is_doctor': is_doc,
+        'is_patient': is_pat,
+        'own_patient': own,
+        'categories': Patient.CATEGORY_CHOICES,
+        'years': years,
+        'date_from': request.GET.get('from', ''),
+        'date_to': request.GET.get('to', ''),
+        'category': request.GET.get('category', ''),
+        'patient_id': request.GET.get('patient_id', ''),
+        'year': request.GET.get('year', ''),
+    })
