@@ -23,6 +23,7 @@
       {% endif %}
       <form method="post">
         {% csrf_token %}
+        {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
         <div class="mb-3">
           <label class="form-label">Username</label>
           <input type="text" name="username" class="form-control" required autofocus
@@ -39,7 +40,7 @@
       </div>
       <hr>
       <p class="small text-muted mb-0">
-        <strong>Demo accounts:</strong><br>
+        <strong>Sample accounts:</strong><br>
         admin / admin123 &nbsp;|&nbsp; doctor1 / doctor123<br>
         student1 / student123 &nbsp;|&nbsp; staff1 / staff123
       </p>

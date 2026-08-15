@@ -56,7 +56,14 @@
     {% endif %}
   </div></form>
 
-  {% if show_kpi %}
+  {% if not analysis %}
+  <div class="alert alert-secondary mt-3">
+    Select an <strong>Analysis type</strong> from the dropdown above and click <strong>Apply</strong> to view graphs and tables.
+    Graphs are not shown until you choose a filter.
+  </div>
+{% endif %}
+
+{% if show_kpi %}
   <div class="row g-3 mb-4">
     <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.patients }}</div><div class="kpi-label">Patients</div></div></div>
     <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.appointments }}</div><div class="kpi-label">Appointments</div></div></div>

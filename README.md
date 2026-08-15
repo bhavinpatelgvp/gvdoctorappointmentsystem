@@ -31,9 +31,9 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Database (demo uses SQLite path from settings / env)
-python manage.py makemigrations
 python manage.py migrate
 python manage.py seed_demo_data
+
 python manage.py runserver
 ```
 

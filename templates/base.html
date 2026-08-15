@@ -34,6 +34,7 @@
         <li class="nav-item"><a class="nav-link" href="{% url 'health_records:index' %}">Health Check-ups</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'certificates:index' %}">Certificates</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'analytics:index' %}">Analytics</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'analytics:downloads' %}">Downloads</a></li>
         {% if user.is_superuser or user.role_code == 'admin' or user.role_code == 'super_admin' %}
         <li class="nav-item"><a class="nav-link" href="{% url 'masters:index' %}">Master Data</a></li>
         {% endif %}
@@ -64,7 +65,7 @@
 
 <footer class="footer-gv text-center">
   <div class="container">
-    Gujarat Vidyapith Doctor Appointment &amp; Health Management System &mdash; DEMO
+    Gujarat Vidyapith Doctor Appointment &amp; Health Management System
   </div>
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

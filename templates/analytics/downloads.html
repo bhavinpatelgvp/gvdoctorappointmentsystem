@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Download Records{% endblock %}
+{% block content %}
+<div class="container">
+  <h2 class="page-title">Download Records</h2>
+  <p class="text-muted">Filter then download. Leave filters empty to export all accessible records.</p>
+
+  <form class="card card-gv mb-4" method="get">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+        {% if not is_patient %}
+        <div class="col-md-2">
+          <label class="form-label small mb-0">Category</label>
+          <select name="category" class="form-select">
+            <option value="">All</option>
+            {% for code, label in categories %}
+            <option value="{{ code }}" {% if category == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-0">Patient ID</label>
+          <input name="patient_id" value="{{ patient_id }}" class="form-control" placeholder="P-STU-0001">
+        </div>
+        {% else %}
+        <input type="hidden" name="patient_id" value="{{ own_patient.patient_id }}">
+        {% endif %}
+        <div class="col-md-2">
+          <label class="form-label small mb-0">From date</label>
+          <input type="date" name="from" value="{{ date_from }}" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-0">To date</label>
+          <input type="date" name="to" value="{{ date_to }}" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-0">Year</label>
+          <select name="year" class="form-select">
+            <option value="">Any</option>
+            {% for y in years %}
+            <option value="{{ y }}" {% if year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-outline-secondary w-100">Apply filters</button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-3">
+    {% if is_admin or is_doctor %}
+    <div class="col-md-4">
+      <div class="card card-gv h-100">
+        <div class="card-body">
+          <h5 class="card-title">Patients</h5>
+          <p class="small text-muted">All patients{% if is_doctor %} linked to your practice{% endif %}, or filtered by category / patient ID.</p>
+          <a class="btn btn-gv" href="{% url 'analytics:export_patients' %}?{{ request.GET.urlencode }}">Download CSV</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% if is_admin %}
+    <div class="col-md-4">
+      <div class="card card-gv h-100">
+        <div class="card-body">
+          <h5 class="card-title">Doctors</h5>
+          <p class="small text-muted">Full doctor master list.</p>
+          <a class="btn btn-gv" href="{% url 'analytics:export_doctors' %}">Download CSV</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% if is_admin or is_doctor %}
+    <div class="col-md-4">
+      <div class="card card-gv h-100">
+        <div class="card-body">
+          <h5 class="card-title">Appointments</h5>
+          <p class="small text-muted">Patient / date / year / category wise.</p>
+          <a class="btn btn-gv" href="{% url 'analytics:export_appointments' %}?{{ request.GET.urlencode }}">Download CSV</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card card-gv h-100">
+        <div class="card-body">
+          <h5 class="card-title">Health Check-ups</h5>
+          <p class="small text-muted">Patient / date / year / category wise.</p>
+          <a class="btn btn-gv" href="{% url 'analytics:export_health_checkups' %}?{{ request.GET.urlencode }}">Download CSV</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% if is_patient or is_admin or is_doctor %}
+    <div class="col-md-4">
+      <div class="card card-gv h-100">
+        <div class="card-body">
+          <h5 class="card-title">{% if is_patient %}My reports &amp; history{% else %}Patient history{% endif %}</h5>
+          <p class="small text-muted">Check-ups, appointments, certificates{% if not is_patient %} for selected patient{% endif %}. Date filters apply.</p>
+          <a class="btn btn-gv" href="{% url 'analytics:export_patient_history' %}?{{ request.GET.urlencode }}{% if is_patient and not request.GET.patient_id %}&patient_id={{ own_patient.patient_id }}{% endif %}">Download CSV</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
