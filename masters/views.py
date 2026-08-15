@@ -40,7 +40,7 @@ def master_index(request):
 
 
 # ── Generic helpers ─────────────────────────────────────────
-def _paginate(request, qs, per_page=25):
+def _paginate(request, qs, per_page=10):
     return Paginator(qs, per_page).get_page(request.GET.get('page'))
 
 
