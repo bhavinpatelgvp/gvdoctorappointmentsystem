@@ -59,7 +59,7 @@
             {% endfor %}
           </div>
           {% else %}
-          <a href="{% url 'appointments:book' %}?doctor={{ d.pk }}" class="btn btn-sm btn-gv">Book</a>
+          <a href="{% url 'appointments:book' %}?doctor={{ d.pk %}" class="btn btn-sm btn-gv">Book</a>
           {% endif %}
         </div>
       </div>

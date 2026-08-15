@@ -14,8 +14,9 @@
           {% endfor %}
         </select>
       </div>
+      {% if not category_locked %}
       <div class="col-md-2">
-        <label class="form-label small mb-0">Category</label>
+        <label class="form-label small mb-0">Patient Categories</label>
         <select name="category" class="form-select">
           <option value="">All categories</option>
           {% for code, label in categories %}
@@ -23,6 +24,13 @@
           {% endfor %}
         </select>
       </div>
+      {% else %}
+      <div class="col-md-2">
+        <label class="form-label small mb-0">Category</label>
+        <input type="text" class="form-control" value="{% for code, label in categories %}{% if code == category %}{{ label }}{% endif %}{% endfor %}" readonly>
+        <input type="hidden" name="category" value="{{ category }}">
+      </div>
+      {% endif %}
       <div class="col-md-2">
         <label class="form-label small mb-0">From</label>
         <input type="date" name="from" value="{{ date_from }}" class="form-control">
@@ -31,7 +39,7 @@
         <label class="form-label small mb-0">To</label>
         <input type="date" name="to" value="{{ date_to }}" class="form-control">
       </div>
-      {% if analysis == 'patient_trend' %}
+      {% if analysis == 'patient_trend' and not is_patient_scope %}
       <div class="col-md-2">
         <label class="form-label small mb-0">Patient ID</label>
         <input name="patient_id" value="{{ patient_id }}" class="form-control" placeholder="P-STU-0001">
@@ -41,8 +49,14 @@
         <button class="btn btn-gv w-100" type="submit">Apply</button>
       </div>
     </div>
+    {% if category and not is_patient_scope %}
+    <p class="small text-muted mb-0 mt-2">Showing data for category: <strong>{% for code, label in categories %}{% if code == category %}{{ label }}{% endif %}{% endfor %}</strong></p>
+    {% elif is_patient_scope %}
+    <p class="small text-muted mb-0 mt-2">Showing only your records ({{ category }} category).</p>
+    {% endif %}
   </div></form>
 
+  {% if show_kpi %}
   <div class="row g-3 mb-4">
     <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.patients }}</div><div class="kpi-label">Patients</div></div></div>
     <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.appointments }}</div><div class="kpi-label">Appointments</div></div></div>
@@ -55,34 +69,43 @@
     <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.bp }}</div><div class="kpi-label">BP</div></div></div>
     <div class="col-6 col-md-3"><div class="card card-gv kpi-card"><div class="kpi-value">{{ kpi.lipid }}</div><div class="kpi-label">Lipid</div></div></div>
   </div>
+  {% endif %}
 
   <div class="row g-3">
-    <div class="col-md-8">
-      <div class="card card-gv"><div class="card-header">Monthly Check-ups</div>
+    {% if show_monthly %}
+    <div class="col-md-{% if show_categories %}8{% else %}12{% endif %}">
+      <div class="card card-gv"><div class="card-header">Monthly Check-ups{% if is_doctor_scope %} (Yours){% endif %}{% if category %} · filtered{% endif %}</div>
         <div class="card-body"><canvas id="chartMonthly" height="120"></canvas></div>
       </div>
     </div>
+    {% endif %}
+    {% if show_categories %}
     <div class="col-md-4">
       <div class="card card-gv"><div class="card-header">Patient Categories</div>
         <div class="card-body"><canvas id="chartCat" height="200"></canvas></div>
       </div>
     </div>
+    {% endif %}
+    {% if show_department %}
     <div class="col-md-12">
-      <div class="card card-gv"><div class="card-header">Department-wise Check-ups</div>
+      <div class="card card-gv"><div class="card-header">Department-wise Check-ups{% if category %} · filtered{% endif %}</div>
         <div class="card-body"><canvas id="chartDept" height="120"></canvas></div>
       </div>
     </div>
+    {% endif %}
   </div>
 
-  {% if cat_table %}
+  {% if show_categories and cat_table %}
   <div class="card card-gv mt-3">
-    <div class="card-header">Category breakdown{% if category %} (filtered: {{ category }}){% endif %}</div>
+    <div class="card-header">Category breakdown{% if category %} (filtered: {% for code, label in categories %}{% if code == category %}{{ label }}{% endif %}{% endfor %}){% endif %}</div>
     <div class="table-responsive">
       <table class="table table-gv mb-0">
         <thead><tr><th>Category</th><th>Patients</th></tr></thead>
         <tbody>
         {% for row in cat_table %}
           <tr><td>{{ row.label }}</td><td>{{ row.count }}</td></tr>
+        {% empty %}
+          <tr><td colspan="2" class="text-muted">No data for selected filters</td></tr>
         {% endfor %}
         </tbody>
       </table>
@@ -90,63 +113,98 @@
   </div>
   {% endif %}
 
-  {% if appt_by_status %}
+  {% if show_appt_status %}
   <div class="card card-gv mt-3">
-    <div class="card-header">Appointments by Status{% if is_doctor_scope %} (Yours){% endif %}</div>
+    <div class="card-header">Appointments by Status{% if is_doctor_scope %} (Yours){% endif %}{% if category %} · filtered{% endif %}</div>
     <div class="card-body">
       <canvas id="chartApptStatus" height="120"></canvas>
+      {% if appt_by_status %}
       <ul class="mb-0 mt-2">{% for b in appt_by_status %}<li>{{ b.status }}: {{ b.c }}</li>{% endfor %}</ul>
+      {% else %}
+      <p class="text-muted small mb-0 mt-2">No appointments for selected filters</p>
+      {% endif %}
     </div>
   </div>
   {% endif %}
 
-  {% if recent_checkups %}
+  {% if show_recent_checkups %}
   <div class="card card-gv mt-3">
-    <div class="card-header">Recent Check-ups{% if is_doctor_scope %} (Yours){% endif %}</div>
+    <div class="card-header">Recent Check-ups{% if is_doctor_scope %} (Yours){% endif %}{% if category %} · filtered{% endif %}
+      {% if page_obj %}<span class="float-end small fw-normal">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} total</span>{% endif %}
+    </div>
     <div class="table-responsive">
       <table class="table table-gv mb-0">
         <thead><tr><th>Date</th><th>Patient</th><th>Notes</th></tr></thead>
         <tbody>
         {% for c in recent_checkups %}
-          <tr><td>{{ c.checkup_date }}</td><td>{{ c.patient.name }}</td><td>{{ c.notes|truncatechars:40 }}</td></tr>
+          <tr>
+            <td>{{ c.checkup_date }}</td>
+            <td>{{ c.patient.name }} <span class="text-muted small">({{ c.patient.patient_id }})</span></td>
+            <td>{{ c.notes|default:"—"|truncatechars:40 }}</td>
+          </tr>
         {% empty %}
-          <tr><td colspan="3" class="text-muted">None</td></tr>
+          <tr><td colspan="3" class="text-muted">None for selected filters</td></tr>
         {% endfor %}
         </tbody>
       </table>
     </div>
+    {% if page_obj and page_obj.has_other_pages %}
+    <div class="card-footer bg-transparent">
+      <nav aria-label="Recent check-ups pagination">
+        <ul class="pagination pagination-sm justify-content-center mb-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">Prev</a></li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link">Prev</span></li>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ page_obj.next_page_number }}">Next</a></li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link">Next</span></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
   </div>
   {% endif %}
 
   {% if analysis == 'patient_trend' and trend_patient %}
-  <h4 class="mt-4">Trends – {{ trend_patient.name }}</h4>
+  <h4 class="mt-4">Trends – {{ trend_patient.name }} <small class="text-muted">({{ trend_patient.patient_id }})</small></h4>
   <div class="row g-3">
     <div class="col-md-6"><div class="card card-gv"><div class="card-header">Hemoglobin</div><div class="card-body"><canvas id="chartHb" height="180"></canvas></div></div></div>
     <div class="col-md-6"><div class="card card-gv"><div class="card-header">RBS</div><div class="card-body"><canvas id="chartRbs" height="180"></canvas></div></div></div>
     <div class="col-md-12"><div class="card card-gv"><div class="card-header">Blood Pressure</div><div class="card-body"><canvas id="chartBp" height="120"></canvas></div></div></div>
   </div>
   {% elif analysis == 'patient_trend' %}
-  <div class="alert alert-info mt-3">Enter a Patient ID and click Apply to view trends.</div>
+  <div class="alert alert-info mt-3">Enter a Patient ID and click Apply to view health trends.</div>
   {% endif %}
 
   {% if analysis == 'cbc' and cbc_stats %}
-  <div class="card card-gv mt-3"><div class="card-header">CBC – Hemoglobin</div><div class="card-body">
-    N={{ cbc_stats.n }} · Avg={{ cbc_stats.avg|floatformat:2 }} · Min={{ cbc_stats.mn }} · Max={{ cbc_stats.mx }}
+  <div class="card card-gv mt-3"><div class="card-body">
+    <strong>CBC</strong> – n={{ cbc_stats.n }} · Avg Hb={{ cbc_stats.avg|floatformat:1 }} · Min={{ cbc_stats.mn|floatformat:1 }} · Max={{ cbc_stats.mx|floatformat:1 }}
   </div></div>
   {% endif %}
   {% if analysis == 'rbs' and rbs_stats %}
-  <div class="card card-gv mt-3"><div class="card-header">RBS</div><div class="card-body">
-    N={{ rbs_stats.n }} · Avg={{ rbs_stats.avg|floatformat:1 }} · Min={{ rbs_stats.mn }} · Max={{ rbs_stats.mx }}
+  <div class="card card-gv mt-3"><div class="card-body">
+    <strong>RBS</strong> – n={{ rbs_stats.n }} · Avg={{ rbs_stats.avg|floatformat:1 }} · Min={{ rbs_stats.mn|floatformat:1 }} · Max={{ rbs_stats.mx|floatformat:1 }}
   </div></div>
   {% endif %}
   {% if analysis == 'bp' and bp_stats %}
-  <div class="card card-gv mt-3"><div class="card-header">Blood Pressure</div><div class="card-body">
-    N={{ bp_stats.n }} · Avg systolic={{ bp_stats.avg_sys|floatformat:0 }} · Avg diastolic={{ bp_stats.avg_dia|floatformat:0 }}
+  <div class="card card-gv mt-3"><div class="card-body">
+    <strong>Blood Pressure</strong> – n={{ bp_stats.n }} · Avg Sys={{ bp_stats.avg_sys|floatformat:0 }} · Avg Dia={{ bp_stats.avg_dia|floatformat:0 }}
   </div></div>
   {% endif %}
   {% if analysis == 'lipid' and lipid_stats %}
-  <div class="card card-gv mt-3"><div class="card-header">Lipid Profile</div><div class="card-body">
-    N={{ lipid_stats.n }} · Avg TC={{ lipid_stats.avg_tc|floatformat:0 }} · HDL={{ lipid_stats.avg_hdl|floatformat:0 }} · LDL={{ lipid_stats.avg_ldl|floatformat:0 }}
+  <div class="card card-gv mt-3"><div class="card-body">
+    <strong>Lipid Profile</strong> – n={{ lipid_stats.n }} · Avg TC={{ lipid_stats.avg_tc|floatformat:0 }} · HDL={{ lipid_stats.avg_hdl|floatformat:0 }} · LDL={{ lipid_stats.avg_ldl|floatformat:0 }}
   </div></div>
   {% endif %}
 </div>
@@ -161,7 +219,7 @@ const brown = '#5c4033', muted = '#a0896e', green = '#4a7c59';
   if (m) new Chart(m, {
     type: 'line',
     data: { labels: {{ monthly_labels|safe }}, datasets: [{ label: 'Check-ups', data: {{ monthly_values|safe }}, borderColor: brown, tension: 0.2 }] },
-    options: { plugins: { legend: { display: false } } }
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
   const c = document.getElementById('chartCat');
   if (c) new Chart(c, {
@@ -172,33 +230,27 @@ const brown = '#5c4033', muted = '#a0896e', green = '#4a7c59';
   if (d) new Chart(d, {
     type: 'bar',
     data: { labels: {{ dept_labels|safe }}, datasets: [{ label: 'Check-ups', data: {{ dept_values|safe }}, backgroundColor: brown }] },
-    options: { plugins: { legend: { display: false } } }
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
   const a = document.getElementById('chartApptStatus');
   if (a) new Chart(a, {
     type: 'bar',
     data: { labels: {{ appt_status_labels|safe }}, datasets: [{ label: 'Appointments', data: {{ appt_status_values|safe }}, backgroundColor: brown }] },
-    options: { plugins: { legend: { display: false } } }
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
   {% if analysis == 'patient_trend' and trend_patient %}
-  {% if hb_labels %}
   const hb = document.getElementById('chartHb');
-  if (hb) new Chart(hb, { type: 'line', data: { labels: {{ hb_labels|safe }}, datasets: [{ label: 'Hb', data: {{ hb_values|safe }}, borderColor: brown }] } });
-  {% endif %}
-  {% if rbs_labels %}
+  if (hb) new Chart(hb, { type: 'line', data: { labels: {{ hb_labels|safe }}, datasets: [{ label: 'Hb', data: {{ hb_values|safe }}, borderColor: brown, tension: 0.2 }] }, options: { plugins: { legend: { display: false } } } });
   const rbs = document.getElementById('chartRbs');
-  if (rbs) new Chart(rbs, { type: 'line', data: { labels: {{ rbs_labels|safe }}, datasets: [{ label: 'RBS', data: {{ rbs_values|safe }}, borderColor: green }] } });
-  {% endif %}
-  {% if bp_labels %}
+  if (rbs) new Chart(rbs, { type: 'line', data: { labels: {{ rbs_labels|safe }}, datasets: [{ label: 'RBS', data: {{ rbs_values|safe }}, borderColor: green, tension: 0.2 }] }, options: { plugins: { legend: { display: false } } } });
   const bp = document.getElementById('chartBp');
   if (bp) new Chart(bp, {
     type: 'line',
     data: { labels: {{ bp_labels|safe }}, datasets: [
-      { label: 'Systolic', data: {{ bp_sys|safe }}, borderColor: brown },
-      { label: 'Diastolic', data: {{ bp_dia|safe }}, borderColor: muted }
+      { label: 'Systolic', data: {{ bp_sys|safe }}, borderColor: brown, tension: 0.2 },
+      { label: 'Diastolic', data: {{ bp_dia|safe }}, borderColor: muted, tension: 0.2 }
     ]}
   });
-  {% endif %}
   {% endif %}
 })();
 </script>

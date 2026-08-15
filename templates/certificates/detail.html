@@ -14,7 +14,9 @@
   </div></div>
   <div class="d-flex gap-2">
     <a href="{% url 'certificates:download' certificate.pk %}" class="btn btn-gv">Download PDF</a>
+    {% if can_verify and certificate.status != 'verified' %}
     <form method="post" action="{% url 'certificates:verify' certificate.pk %}">{% csrf_token %}<button class="btn btn-outline-gv">Verify</button></form>
+    {% endif %}
     <a href="{% url 'certificates:index' %}" class="btn btn-outline-secondary">Back</a>
   </div>
 </div>
