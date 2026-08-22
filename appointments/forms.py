@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 from django.utils import timezone
 from datetime import date, datetime, time, timedelta
 from doctors.models import Doctor, DoctorSchedule, DoctorLeave
@@ -8,7 +9,7 @@ from .models import Appointment
 
 class AppointmentBookForm(forms.Form):
     doctor = forms.ModelChoiceField(
-        queryset=Doctor.objects.filter(status='Active', availability='Available'),
+        queryset=Doctor.objects.filter(status='Active'),
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
     appointment_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
@@ -18,6 +19,20 @@ class AppointmentBookForm(forms.Form):
     def __init__(self, *args, patient=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.patient = patient
+        # Include any initial doctor even if availability is not "Available"
+        # so POST does not fail with "Select a valid choice"
+        qs = Doctor.objects.filter(status='Active')
+        initial_doc = None
+        if self.initial.get('doctor'):
+            initial_doc = self.initial['doctor']
+        if self.data.get('doctor'):
+            initial_doc = self.data.get('doctor')
+        if initial_doc:
+            try:
+                qs = Doctor.objects.filter(Q(status='Active') | Q(pk=initial_doc))
+            except Exception:
+                pass
+        self.fields['doctor'].queryset = qs.distinct()
 
     def clean_appointment_date(self):
         d = self.cleaned_data['appointment_date']

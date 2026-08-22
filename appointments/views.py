@@ -23,11 +23,50 @@ from .services import generate_slots, search_doctors
 
 
 def _next_appt_number():
+    """Unique APTYYYYMMDD#### using max suffix (not count) to avoid seed/gap collisions."""
+    import re
+    import uuid
+
     today = date.today().strftime('%Y%m%d')
     prefix = f'APT{today}'
-    last = Appointment.objects.filter(appointment_number__startswith=prefix).count()
-    return f'{prefix}{last + 1:04d}'
+    existing = Appointment.objects.filter(
+        appointment_number__startswith=prefix
+    ).values_list('appointment_number', flat=True)
 
+    max_seq = 0
+    for num in existing:
+        m = re.search(r'(\d+)$', num or '')
+        if m:
+            try:
+                max_seq = max(max_seq, int(m.group(1)))
+            except ValueError:
+                pass
+
+    seq = max_seq + 1
+    for _ in range(1000):
+        candidate = f'{prefix}{seq:04d}'
+        if not Appointment.objects.filter(appointment_number=candidate).exists():
+            return candidate
+        seq += 1
+    return f'{prefix}{uuid.uuid4().hex[:8].upper()}'
+
+
+def _create_appointment_unique(**kwargs):
+    """Create appointment; regenerate number if UNIQUE constraint races."""
+    from django.db import IntegrityError
+
+    last_err = None
+    for _ in range(8):
+        kwargs['appointment_number'] = _next_appt_number()
+        try:
+            with transaction.atomic():
+                return Appointment.objects.create(**kwargs)
+        except IntegrityError as exc:
+            last_err = exc
+            if 'appointment_number' not in str(exc).lower() and 'UNIQUE' not in str(exc):
+                raise
+            continue
+    raise last_err
 
 
 @login_required
@@ -141,17 +180,15 @@ def book(request):
             if not ok:
                 messages.error(request, 'Selected slot is no longer available.')
             else:
-                with transaction.atomic():
-                    appt = Appointment.objects.create(
-                        appointment_number=_next_appt_number(),
-                        patient=patient,
-                        doctor=data['doctor'],
-                        appointment_date=data['appointment_date'],
-                        appointment_time=data['appointment_time'],
-                        status=Appointment.STATUS_REQUESTED,
-                        reason=data.get('reason') or '',
-                        created_by=request.user,
-                    )
+                appt = _create_appointment_unique(
+                    patient=patient,
+                    doctor=data['doctor'],
+                    appointment_date=data['appointment_date'],
+                    appointment_time=data['appointment_time'],
+                    status=Appointment.STATUS_REQUESTED,
+                    reason=data.get('reason') or '',
+                    created_by=request.user,
+                )
                 notify_appointment(appt, 'booked')
                 log_action(request.user, 'create', 'appointments', appt.pk, appt.appointment_number, request=request)
                 messages.success(request, f'Appointment {appt.appointment_number} booked.')

@@ -42,6 +42,22 @@ class PatientRegistrationForm(forms.Form):
     enrollment_number = forms.CharField(max_length=40, required=False, widget=forms.TextInput(attrs={
         'class': 'form-control', 'placeholder': 'Required for students',
     }))
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.filter(status='Active').order_by('name'),
+        required=False,
+        empty_label='Select department',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    programme = forms.ModelChoiceField(
+        queryset=Programme.objects.filter(status='Active').order_by('name'),
+        required=False,
+        empty_label='Select programme',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    semester = forms.IntegerField(
+        required=False, min_value=1, max_value=12,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 1–8'}),
+    )
     # Staff-specific
     employee_id = forms.CharField(max_length=40, required=False, widget=forms.TextInput(attrs={
         'class': 'form-control', 'placeholder': 'Required for staff',
@@ -65,6 +81,17 @@ class PatientRegistrationForm(forms.Form):
                 self.add_error('enrollment_number', 'Enrollment number is required for students.')
             elif StudentProfile.objects.filter(enrollment_number=enr).exists():
                 self.add_error('enrollment_number', 'This enrollment number is already registered.')
+            if not cleaned.get('department'):
+                self.add_error('department', 'Department is required for students.')
+            if not cleaned.get('programme'):
+                self.add_error('programme', 'Programme is required for students.')
+            if not cleaned.get('semester'):
+                self.add_error('semester', 'Semester is required for students.')
+            # Programme should belong to selected department when both set
+            prog = cleaned.get('programme')
+            dept = cleaned.get('department')
+            if prog and dept and prog.department_id and prog.department_id != dept.pk:
+                self.add_error('programme', 'Selected programme does not belong to the chosen department.')
         elif cat == Patient.CATEGORY_STAFF:
             eid = (cleaned.get('employee_id') or '').strip()
             if not eid:
@@ -115,6 +142,9 @@ class PatientRegistrationForm(forms.Form):
                 StudentProfile.objects.create(
                     patient=patient,
                     enrollment_number=data['enrollment_number'].strip(),
+                    department=data.get('department'),
+                    programme=data.get('programme'),
+                    semester=data.get('semester'),
                 )
             else:
                 StaffProfile.objects.create(

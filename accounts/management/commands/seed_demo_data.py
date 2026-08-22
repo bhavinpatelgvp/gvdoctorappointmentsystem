@@ -70,7 +70,12 @@ class Command(BaseCommand):
         ]
         for code, name in depts:
             Department.objects.get_or_create(
-                department_code=code, defaults={'name': name, 'status': 'Active'}
+                department_code=code,
+                defaults={
+                    'name': name,
+                    'status': 'Active',
+                    'email': f'{code.lower()}.hod@gujaratvidyapith.org',
+                },
             )
         self.stdout.write('  Departments created')
 
@@ -174,7 +179,7 @@ class Command(BaseCommand):
         # Admin
         if not User.objects.filter(username='admin').exists():
             u = User.objects.create_superuser(
-                username='admin', email='admin@gujaratvidyapith.ac.in',
+                username='admin', email='admin@gujaratvidyapith.org',
                 password='admin123', first_name='System', last_name='Administrator',
             )
             u.role = admin_role
@@ -197,7 +202,7 @@ class Command(BaseCommand):
                 continue
             user = User.objects.create_user(
                 username=uname, password='doctor123',
-                email=f'{uname}@gujaratvidyapith.ac.in',
+                email=f'{uname}@gujaratvidyapith.org',
                 first_name=fn, last_name=ln, role=doctor_role, gender=gender,
             )
             spec = Specialization.objects.get(code=spec_code)
@@ -232,7 +237,7 @@ class Command(BaseCommand):
                 continue
             user = User.objects.create_user(
                 username=uname, password='hod123',
-                email=f'{uname}@gujaratvidyapith.ac.in',
+                email=f'{uname}@gujaratvidyapith.org',
                 first_name=f'HOD{i+1}', last_name=dept.name[:10], role=hod_role,
             )
             HOD.objects.create(
@@ -248,7 +253,7 @@ class Command(BaseCommand):
                 continue
             user = User.objects.create_user(
                 username=uname, password='staff123',
-                email=f'staff{i}@gujaratvidyapith.ac.in',
+                email=f'staff{i}@gujaratvidyapith.org',
                 first_name=f'Staff{i}', last_name='Member', role=staff_role,
                 gender=random.choice(['Male', 'Female']),
             )
@@ -293,7 +298,7 @@ class Command(BaseCommand):
                 continue
             user = User.objects.create_user(
                 username=uname, password='student123',
-                email=f'student{i}@gujaratvidyapith.ac.in',
+                email=f'student{i}@gujaratvidyapith.org',
                 first_name=f'Student{i}', last_name=random.choice(['Patel', 'Shah', 'Mehta', 'Joshi', 'Desai', 'Raval']),
                 role=student_role, gender=random.choice(['Male', 'Female']),
             )
