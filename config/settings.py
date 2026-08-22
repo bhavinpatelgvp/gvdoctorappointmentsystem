@@ -79,16 +79,27 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database – SQLite for development/demo; switch ENGINE/NAME for MySQL/PostgreSQL
+_db_engine = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
+_db_name = os.getenv('DB_NAME', str(BASE_DIR / 'db.sqlite3'))
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
-        'NAME': os.getenv('DB_NAME', '/tmp/gv_doctor.db'),
+        'ENGINE': _db_engine,
+        'NAME': _db_name,
+    }
+}
+# Never pass MySQL-only options (e.g. charset) to SQLite – causes:
+# TypeError: Connection() got an unexpected keyword argument 'charset'
+if 'sqlite' not in _db_engine:
+    DATABASES['default'].update({
         'USER': os.getenv('DB_USER', ''),
         'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST': os.getenv('DB_HOST', ''),
         'PORT': os.getenv('DB_PORT', ''),
-    }
-}
+    })
+    _charset = os.getenv('DB_CHARSET', '').strip()
+    if _charset and 'mysql' in _db_engine:
+        DATABASES['default']['OPTIONS'] = {'charset': _charset}
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -127,7 +138,7 @@ EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@gujaratvidyapith.ac.in')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@gujaratvidyapith.org')
 
 # REST Framework (API-ready)
 REST_FRAMEWORK = {

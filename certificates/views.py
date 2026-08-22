@@ -93,9 +93,19 @@ def create(request):
                 )
             except Exception as exc:
                 messages.warning(request, f'Certificate saved but PDF failed: {exc}')
-            notify_certificate(cert, 'issued')
+            # Reload so pdf_file path is available for email attachment
+            cert.refresh_from_db()
+            emailed = notify_certificate(cert, 'issued')
             log_action(request.user, 'create', 'certificates', cert.pk, cert.certificate_number, request=request)
-        messages.success(request, f'Certificate {cert.certificate_number} issued.')
+        mail_note = ''
+        try:
+            if emailed:
+                mail_note = ' Emails: ' + ', '.join(f'{r}:{e}' for r, e in emailed)
+            else:
+                mail_note = ' (No emails sent – check patient/HOD email and console log.)'
+        except NameError:
+            mail_note = ''
+        messages.success(request, f'Certificate {cert.certificate_number} issued.{mail_note}')
         return redirect('certificates:detail', pk=cert.pk)
 
     return render(request, 'certificates/form.html', {
@@ -151,4 +161,35 @@ def verify(request, pk):
         cert.save(update_fields=['status', 'updated_at'])
         log_action(request.user, 'verify', 'certificates', cert.pk, cert.certificate_number, request=request)
         messages.success(request, f'Certificate {cert.certificate_number} verified.')
+    return redirect('certificates:detail', pk=pk)
+
+
+
+@doctor_required
+def resend(request, pk):
+    """Re-send certificate emails to patient and HOD (rest certificates)."""
+    cert = get_object_or_404(
+        MedicalCertificate.objects.select_related(
+            'patient', 'patient__user', 'doctor',
+            'patient__student_profile', 'patient__student_profile__department',
+            'patient__student_profile__department__hod',
+            'patient__staff_profile', 'patient__staff_profile__department',
+            'patient__staff_profile__department__hod',
+        ),
+        pk=pk,
+    )
+    if request.method == 'POST':
+        emailed = notify_certificate(cert, 'sent')
+        log_action(request.user, 'email', 'certificates', cert.pk, cert.certificate_number, request=request)
+        if emailed:
+            messages.success(
+                request,
+                'Email sent to: ' + ', '.join(f'{r}:{e}' for r, e in emailed),
+            )
+        else:
+            messages.warning(
+                request,
+                'No emails sent. Ensure the patient has an email and, for rest certificates, '
+                'the department has an HOD with an email. Check the server console for details.',
+            )
     return redirect('certificates:detail', pk=pk)

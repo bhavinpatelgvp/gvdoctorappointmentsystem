@@ -28,3 +28,21 @@ class ConsultationForm(forms.ModelForm):
             'rest_recommended': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'referral_required': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # All clinical notes are optional at entry time
+        for name in self.fields:
+            self.fields[name].required = False
+
+    def clean_rest_days(self):
+        val = self.cleaned_data.get('rest_days')
+        if val is None or val == '':
+            return None
+        return val
+
+    def clean_follow_up_date(self):
+        val = self.cleaned_data.get('follow_up_date')
+        if val is None or val == '':
+            return None
+        return val

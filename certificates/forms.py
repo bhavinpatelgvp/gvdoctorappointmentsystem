@@ -1,7 +1,7 @@
 from django import forms
+from django.db.models import Q
 from .models import MedicalCertificate
 from patients.models import Patient
-from doctors.models import Doctor
 from consultations.models import Consultation
 
 
@@ -28,14 +28,29 @@ class MedicalCertificateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         doctor = kwargs.pop('doctor', None)
         super().__init__(*args, **kwargs)
-        self.fields['patient'].queryset = Patient.objects.filter(status='Active').order_by('name')
-        self.fields['consultation'].queryset = Consultation.objects.select_related('patient').order_by('-consultation_date')[:200]
+        # Full querysets – never slice ModelChoiceField querysets (causes "Select a valid choice")
+        patients = Patient.objects.filter(status='Active').order_by('name')
+        consultations = Consultation.objects.select_related('patient', 'doctor').order_by('-consultation_date')
+        if doctor is not None:
+            consultations = consultations.filter(doctor=doctor)
+
+        # Always include currently selected values so edit/re-post validates
+        if self.instance and self.instance.pk:
+            if self.instance.patient_id:
+                patients = Patient.objects.filter(
+                    Q(pk=self.instance.patient_id) | Q(status='Active')
+                ).order_by('name').distinct()
+            if self.instance.consultation_id:
+                consultations = Consultation.objects.filter(
+                    Q(pk=self.instance.consultation_id) | Q(pk__in=consultations.values('pk'))
+                ).select_related('patient', 'doctor').order_by('-consultation_date')
+
+        self.fields['patient'].queryset = patients
+        self.fields['consultation'].queryset = consultations
         self.fields['consultation'].required = False
-        if doctor:
-            self.fields['consultation'].queryset = Consultation.objects.filter(
-                doctor=doctor
-            ).select_related('patient').order_by('-consultation_date')[:200]
+        self.fields['rest_days'].required = False
+        self.fields['rest_start_date'].required = False
+        self.fields['rest_end_date'].required = False
 
 
-# Alias used by views
 CertificateForm = MedicalCertificateForm

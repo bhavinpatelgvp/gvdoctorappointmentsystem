@@ -8,4 +8,5 @@ urlpatterns = [
     path('<int:pk>/', views.detail, name='detail'),
     path('<int:pk>/download/', views.download, name='download'),
     path('<int:pk>/verify/', views.verify, name='verify'),
+    path('<int:pk>/resend/', views.resend, name='resend'),
 ]
