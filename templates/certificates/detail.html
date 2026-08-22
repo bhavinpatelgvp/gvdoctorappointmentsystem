@@ -5,17 +5,31 @@
   <h2 class="page-title">{{ certificate.certificate_number }}</h2>
   <div class="card card-gv mb-3"><div class="card-body">
     <p><strong>Patient:</strong> {{ certificate.patient.name }} ({{ certificate.patient.patient_id }})</p>
-    <p><strong>Doctor:</strong> Dr. {{ certificate.doctor.name }}</p>
-    <p><strong>Date:</strong> {{ certificate.consultation_date }} · <strong>Status:</strong> {{ certificate.get_status_display }}</p>
+    <p><strong>Patient email:</strong> {{ certificate.patient.email|default:"—" }}</p>
+    <p><strong>Doctor:</strong> Dr. {{ certificate.doctor.name|default:"—" }}</p>
+    <p><strong>Date:</strong> {{ certificate.consultation_date|default:certificate.created_at }}</p>
+    <p><strong>Status:</strong> {{ certificate.get_status_display }}</p>
     <p><strong>Advice:</strong> {{ certificate.medical_advice|default:"—" }}</p>
     {% if certificate.rest_recommended %}
-    <p><strong>Rest:</strong> {{ certificate.rest_days }} days ({{ certificate.rest_start_date }} – {{ certificate.rest_end_date }})</p>
+    <p class="text-warning mb-0">
+      <strong>Rest:</strong> {{ certificate.rest_days }} day(s)
+      ({{ certificate.rest_start_date }} – {{ certificate.rest_end_date }})
+    </p>
     {% endif %}
   </div></div>
-  <div class="d-flex gap-2">
-    <a href="{% url 'certificates:download' certificate.pk %}" class="btn btn-gv">Download PDF</a>
-    {% if can_verify and certificate.status != 'verified' %}
-    <form method="post" action="{% url 'certificates:verify' certificate.pk %}">{% csrf_token %}<button class="btn btn-outline-gv">Verify</button></form>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if certificate.pdf_file %}
+    <a href="{% url 'certificates:download' certificate.pk %}" class="btn btn-outline-gv">Download PDF</a>
+    {% endif %}
+    {% if user.is_doctor_user or user.is_admin_user or user.is_superuser %}
+      <form method="post" action="{% url 'certificates:resend' certificate.pk %}">{% csrf_token %}
+        <button class="btn btn-gv" type="submit">Send Email to Patient{% if certificate.rest_recommended %} &amp; HOD{% endif %}</button>
+      </form>
+      {% if certificate.status != 'verified' %}
+      <form method="post" action="{% url 'certificates:verify' certificate.pk %}">{% csrf_token %}
+        <button class="btn btn-outline-secondary" type="submit">Verify Certificate</button>
+      </form>
+      {% endif %}
     {% endif %}
     <a href="{% url 'certificates:index' %}" class="btn btn-outline-secondary">Back</a>
   </div>

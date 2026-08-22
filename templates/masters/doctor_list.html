@@ -26,14 +26,18 @@
   </form>
   <div class="card card-gv"><div class="table-responsive">
     <table class="table table-gv table-hover mb-0">
-      <thead><tr><th>Doctor ID</th><th>Name</th><th>Specialization</th><th>Department</th><th>Availability</th><th>Status</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Doctor ID</th>
+        <th>Name</th>
+        <th>Specialization</th>
+        <th>Availability</th>
+        <th>Status</th>
+        <th>Actions</th></tr></thead>
       <tbody>
       {% for d in page_obj %}
       <tr>
         <td><a href="{% url 'masters:doctor_detail' d.pk %}">{{ d.doctor_id }}</a></td>
         <td>Dr. {{ d.name }}</td>
         <td>{{ d.specialization.name|default:"—" }}</td>
-        <td>{{ d.department.name|default:"—" }}</td>
         <td><span class="badge {% if d.availability == 'Available' %}bg-success{% elif d.availability == 'On Leave' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ d.availability }}</span></td>
         <td><span class="badge {% if d.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">{{ d.status }}</span></td>
         <td class="text-nowrap">
@@ -44,7 +48,7 @@
           </form>
         </td>
       </tr>
-      {% empty %}<tr><td colspan="7" class="text-center text-muted">No doctors found</td></tr>{% endfor %}
+      {% empty %}<tr><td colspan="6" class="text-center text-muted">No doctors found</td></tr>{% endfor %}
       </tbody>
     </table>
   </div></div>

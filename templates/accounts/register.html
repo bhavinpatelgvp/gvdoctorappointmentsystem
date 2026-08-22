@@ -4,16 +4,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Register – Gujarat Vidyapith Health</title>
+  <title>Patient Registration – Gujarat Vidyapith Health</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="{% static 'css/gv-theme.css' %}" rel="stylesheet">
 </head>
 <body>
 <div class="login-wrapper">
-  <div class="login-card" style="max-width:520px">
+  <div class="login-card" style="max-width:640px">
     <div class="login-header">
       <h4 class="mb-1">Patient Registration</h4>
-      <p class="mb-0 small opacity-75">Gujarat Vidyapith – Health Management</p>
+      <p class="mb-0 small opacity-75">Gujarat Vidyapith Health System</p>
     </div>
     <div class="p-4">
       {% if messages %}
@@ -21,12 +21,12 @@
         <div class="alert alert-{{ message.tags }} py-2">{{ message }}</div>
         {% endfor %}
       {% endif %}
-      <form method="post" novalidate>
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <form method="post" id="regForm" novalidate>
         {% csrf_token %}
-        {% if form.non_field_errors %}
-        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-        {% endif %}
-        <div class="row g-2">
+        <div class="row">
           <div class="col-md-6 mb-2">
             <label class="form-label">Username *</label>
             {{ form.username }}
@@ -72,13 +72,33 @@
             <label class="form-label">Date of birth</label>
             {{ form.date_of_birth }}
           </div>
-          <div class="col-md-6 mb-2">
-            <label class="form-label">Enrollment no. (students)</label>
+
+          {# Student-only fields #}
+          <div class="col-12 student-only"><hr class="my-2"></div>
+          <div class="col-md-6 mb-2 student-only">
+            <label class="form-label">Enrollment number *</label>
             {{ form.enrollment_number }}
             {% if form.enrollment_number.errors %}<div class="text-danger small">{{ form.enrollment_number.errors }}</div>{% endif %}
           </div>
-          <div class="col-md-6 mb-2">
-            <label class="form-label">Employee ID (staff)</label>
+          <div class="col-md-6 mb-2 student-only">
+            <label class="form-label">Department *</label>
+            {{ form.department }}
+            {% if form.department.errors %}<div class="text-danger small">{{ form.department.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-6 mb-2 student-only">
+            <label class="form-label">Programme *</label>
+            {{ form.programme }}
+            {% if form.programme.errors %}<div class="text-danger small">{{ form.programme.errors }}</div>{% endif %}
+          </div>
+          <div class="col-md-6 mb-2 student-only">
+            <label class="form-label">Semester *</label>
+            {{ form.semester }}
+            {% if form.semester.errors %}<div class="text-danger small">{{ form.semester.errors }}</div>{% endif %}
+          </div>
+
+          {# Staff-only fields #}
+          <div class="col-md-6 mb-2 staff-only">
+            <label class="form-label">Employee ID *</label>
             {{ form.employee_id }}
             {% if form.employee_id.errors %}<div class="text-danger small">{{ form.employee_id.errors }}</div>{% endif %}
           </div>
@@ -87,10 +107,27 @@
       </form>
       <hr>
       <p class="small text-center mb-0">
-        Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a>
+        Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a><br>
+        <a href="{% url 'accounts:register_doctor' %}">Doctor registration</a>
       </p>
     </div>
   </div>
 </div>
+<script>
+(function () {
+  const category = document.getElementById('id_category');
+  const studentBlocks = document.querySelectorAll('.student-only');
+  const staffBlocks = document.querySelectorAll('.staff-only');
+  function sync() {
+    const isStudent = category && category.value === 'student';
+    studentBlocks.forEach(el => { el.style.display = isStudent ? '' : 'none'; });
+    staffBlocks.forEach(el => { el.style.display = isStudent ? 'none' : ''; });
+  }
+  if (category) {
+    category.addEventListener('change', sync);
+    sync();
+  }
+})();
+</script>
 </body>
 </html>
