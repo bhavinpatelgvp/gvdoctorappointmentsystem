@@ -540,7 +540,7 @@ def student_import_template(request):
     writer.writerow([
         'P-STU-9001', 'GV20269001', 'Sample Student', 'Male', '2003-05-15',
         'Bachelor of Computer Applications', 'Computer Science', '3',
-        'sample@gujaratvidyapith.ac.in', '9876543210', 'B+',
+        'sample@gujaratvidyapith.org', '9876543210', 'B+',
     ])
     return response
 

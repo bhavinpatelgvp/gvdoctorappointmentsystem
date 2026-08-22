@@ -78,10 +78,12 @@ class DoctorForm(BootstrapFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['specialization'].queryset = Specialization.objects.filter(status='Active')
+        self.fields['specialization'].required = False
         if 'medical_system' in self.fields:
             self.fields['medical_system'].queryset = MedicalSystem.objects.filter(status='Active')
             self.fields['medical_system'].required = False
         self.fields['profile_photo'].required = False
+        # Keep full availability choices; empty not allowed (has default)
         self._apply_bootstrap()
 
 

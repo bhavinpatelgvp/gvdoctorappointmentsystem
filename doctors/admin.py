@@ -23,12 +23,12 @@ class DoctorLeaveInline(admin.TabularInline):
 @admin.register(Doctor)
 class DoctorAdmin(admin.ModelAdmin):
     list_display = (
-        'doctor_id', 'name', 'specialization', 'department',
+        'doctor_id', 'name', 'specialization',
         'experience_years', 'availability_badge', 'status_badge', 'mobile',
     )
-    list_filter = ('specialization', 'department', 'status', 'availability', 'gender')
+    list_filter = ('specialization', 'status', 'availability', 'gender')
     search_fields = ('name', 'doctor_id', 'registration_number', 'email', 'mobile')
-    list_select_related = ('specialization', 'department', 'user')
+    list_select_related = ('specialization', 'user')
     autocomplete_fields = ('user', 'specialization', 'department')
     list_per_page = 25
     inlines = [DoctorScheduleInline, DoctorLeaveInline]
@@ -41,7 +41,7 @@ class DoctorAdmin(admin.ModelAdmin):
         }),
         ('Professional', {
             'fields': (
-                'qualification', 'specialization', 'department',
+                'qualification', 'specialization',
                 'registration_number', 'experience_years',
             ),
         }),
